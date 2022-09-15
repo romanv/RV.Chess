@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <Optimize>False</Optimize>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <Optimize>True</Optimize>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="Parsing\" />
+    <Folder Include="Shared\" />
+    <Folder Include="Syntax\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="$(AssemblyName).Tests" />
+  </ItemGroup>
+
+</Project>

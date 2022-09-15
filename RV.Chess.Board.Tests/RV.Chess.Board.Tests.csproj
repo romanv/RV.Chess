@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.2.0" />
+    <PackageReference Include="xunit" Version="2.4.1" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RV.Chess.Board\RV.Chess.Board.csproj" />
+    <ProjectReference Include="..\RV.Chess.PGN\RV.Chess.PGN.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Game\JSON\castling.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>castling.json</TargetPath>
+    </None>
+    <None Update="Game\JSON\famous.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>famous.json</TargetPath>
+    </None>
+    <None Update="Game\JSON\pawns.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>pawns.json</TargetPath>
+    </None>
+    <None Update="Game\JSON\promotions.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>promotions.json</TargetPath>
+    </None>
+    <None Update="Game\JSON\standard.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>standard.json</TargetPath>
+    </None>
+    <None Update="Game\JSON\taxing.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>taxing.json</TargetPath>
+    </None>
+    <None Update="xunit.runner.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>
