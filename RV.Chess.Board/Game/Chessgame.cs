@@ -193,13 +193,13 @@ namespace RV.Chess.Board
 
         public ImmutableArray<Move> GenerateMoves() => GenerateMoves(_board, SideToMove);
 
-        public ImmutableArray<Move> GenerateMoves(Chessboard board, Side sideToMove, bool generateSan = true)
+        public ImmutableArray<Move> GenerateMoves(Chessboard board, Side sideToMove, bool fastMode = false)
         {
             var ownKingSquare = board.GetKingSquare(sideToMove);
             var pinned = Movement.GetPinnedPieces(board, sideToMove);
             var checkers = Movement.GetSquareAttackers(board, ownKingSquare, sideToMove.Opposite());
             var allMoves = GenerateAllMoves(board, sideToMove, checkers > 0);
-            var legalMoves = RemoveIllegalMoves(board, sideToMove, allMoves, pinned);
+            var legalMoves = RemoveIllegalMoves(board, sideToMove, allMoves, pinned, fastMode);
 
             // if there is only one checking piece, it can potentially be blocked
             if (checkers > 0)
@@ -233,7 +233,7 @@ namespace RV.Chess.Board
 
                 defensiveMoves.AddRange(evasions);
 
-                if (generateSan)
+                if (!fastMode)
                 {
                     SanGenerator.Generate(defensiveMoves);
                 }
@@ -241,7 +241,7 @@ namespace RV.Chess.Board
                 return defensiveMoves.ToImmutableArray();
             }
 
-            if (generateSan)
+            if (!fastMode)
             {
                 SanGenerator.Generate(legalMoves);
             }
@@ -325,7 +325,7 @@ namespace RV.Chess.Board
             return allMoves;
         }
 
-        private IList<Move> RemoveIllegalMoves(Chessboard board, Side sideToMove, IEnumerable<Move> allMoves, ulong pinned)
+        private IList<Move> RemoveIllegalMoves(Chessboard board, Side sideToMove, IEnumerable<Move> allMoves, ulong pinned, bool fastMode)
         {
             var legalMoves = new List<Move>();
 
@@ -397,7 +397,7 @@ namespace RV.Chess.Board
                     var ownKingExposedAfterMove =
                         Movement.IsSquareAttacked(board, board.GetOwnKingSquare(sideToMove), sideToMove.Opposite());
 
-                    if (enemyKingAttackedAfterMove && !ownKingExposedAfterMove)
+                    if (!fastMode && enemyKingAttackedAfterMove && !ownKingExposedAfterMove)
                     {
                         move.SetCheck(true);
 
