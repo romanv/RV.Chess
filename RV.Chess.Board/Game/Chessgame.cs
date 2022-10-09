@@ -439,6 +439,11 @@ namespace RV.Chess.Board
                         board.AddPiece(captureTarget, captureTargetSquare);
                     }
 
+                    if (ownKingExposedAfterMove)
+                    {
+                        isLegal = false;
+                    }
+
                     EnPassantSquareIdx = oldEnPassant;
                 }
 
