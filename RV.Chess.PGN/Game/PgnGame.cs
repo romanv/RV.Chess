@@ -11,7 +11,22 @@
 
             var tags = nodes.Where(n => n is TagPairSyntax)
                 .ToDictionary(n => ((TagPairSyntax)n).Key, n => ((TagPairSyntax)n).Value);
-            var moves = ParseMoveSection(nodes.Where(n => n is not TagPairSyntax));
+
+            var startingSide = Side.White;
+            var startingMoveNo = 1;
+
+            if (tags.ContainsKey("FEN"))
+            {
+                var parts = tags["FEN"].Split(" ");
+                startingSide = parts.Length >= 1 && parts[1] == "b" ? Side.Black : Side.White;
+
+                if (parts.Length == 6 && int.TryParse(parts[5], out var moveNo))
+                {
+                    startingMoveNo = moveNo;
+                }
+            }
+
+            var moves = ParseMoveSection(nodes.Where(n => n is not TagPairSyntax), startingMoveNo, startingSide);
 
             if (!tags.Any() || !moves.Any())
             {

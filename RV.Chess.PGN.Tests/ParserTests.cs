@@ -18,6 +18,14 @@ namespace RV.PGNParser.Tests
         }
 
         [Theory]
+        [InlineData("[FEN \"1q2r1k1/6p1/p6p/2P1P2P/2Pr4/1Q4N1/P5P1/1K2R3 b - - 0 31\"]\r\n\r\n31...Rd3 \r\n * ")]
+        internal void ValidStartingSide(string text)
+        {
+            var game = PgnGame.FromString(text);
+            Assert.Equal(Side.Black, (game.Moves.First() as PgnMoveNode)?.Side);
+        }
+
+        [Theory]
         [InlineData("[Event \"?\"]\n1... Nf6! 2. Bb2 g6", new string[] { "!", "", "" })]
         [InlineData("[Event \"?\"]\n1... Nf6? 2. Bb2 g6", new string[] { "?", "", "" })]
         [InlineData("[Event \"?\"]\n1... Nf6 2. Bb2!! g6", new string[] { "", "!!", "" })]
