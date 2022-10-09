@@ -281,7 +281,7 @@ namespace RV.Chess.Board
             var allMoves = new List<Move>();
             var piecesToMove = board.OwnBlockers(sideToMove).Board;
             var ownBlockers = board.OwnBlockers(sideToMove).Board;
-            var enemyKingSquare = board.GetKingSquare(SideToMove.Opposite());
+            var enemyKingSquare = board.GetKingSquare(sideToMove.Opposite());
 
             while (piecesToMove > 0)
             {
