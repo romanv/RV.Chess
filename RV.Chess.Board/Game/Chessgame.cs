@@ -213,7 +213,10 @@ namespace RV.Chess.Board
                         defensiveMoves.AddRange(blockers);
                     }
 
-                    var checkerCaptures = legalMoves.Where(m => m.IsCapture && m.ToIdx == checkers.LastSignificantBitIndex());
+                    var checkerCaptures = legalMoves.Where(m =>
+                        (m.IsCapture && m.ToIdx == checkers.LastSignificantBitIndex())
+                        || (m.IsEnPassant && m.EnPassantCaptureTarget == checkers.LastSignificantBitIndex())
+                    );
 
                     if (checkerCaptures.Any())
                     {
@@ -397,7 +400,17 @@ namespace RV.Chess.Board
 
                         // check if opposing side has any legal moves after we make the check
                         var nextPlyBoard = new Chessboard(board);
-                        EnPassantSquareIdx = -1;
+
+                        if (movingPiece.Type == PieceType.Pawn && Math.Abs(move.FromIdx - move.ToIdx) == 16)
+                        {
+                            EnPassantSquareIdx = move.ToIdx > move.FromIdx
+                                ? move.FromIdx + 8
+                                : move.ToIdx + 8;
+                        }
+                        else
+                        {
+                            EnPassantSquareIdx = -1;
+                        }
 
                         // no need to generate SAN notations for evasions, since we only want to check for their existence
                         var evasionMoves = GenerateMoves(nextPlyBoard, sideToMove.Opposite(), false);
