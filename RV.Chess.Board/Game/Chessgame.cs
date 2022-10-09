@@ -286,7 +286,7 @@ namespace RV.Chess.Board
             while (piecesToMove > 0)
             {
                 var sourceSquare = piecesToMove.LastSignificantBitIndex();
-                var piece = _board.GetPieceAt(sourceSquare);
+                var piece = board.GetPieceAt(sourceSquare);
 
                 if (piece.Type is PieceType.Pawn)
                 {
