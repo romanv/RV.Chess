@@ -342,6 +342,7 @@ namespace RV.Chess.Board.Tests
         [InlineData("r1bqkbnr/ppp2ppp/2np4/1B6/3NP3/8/PPP2PPP/RNBQK2R b KQkq - 0 5", "Ne7")]
         [InlineData("2R5/3kp2R/3p4/8/7K/8/8/3Q4 w - - 0 1", "Qg4#")]
         [InlineData("1B6/3p4/2p2Kp1/P1k3p1/P1p2np1/2P1N1N1/2bP4/8 w - - 0 1", "d4+")]
+        [InlineData("3r4/4pp2/R2b1k1K/2np4/4PPB1/2P3n1/8/8 w - - 0 2", "e5#")]
         public void Moves_Misc(string fen, string san)
         {
             var game = new Chessgame();

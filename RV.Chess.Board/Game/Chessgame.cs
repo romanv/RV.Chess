@@ -214,8 +214,11 @@ namespace RV.Chess.Board
                     }
 
                     var checkerCaptures = legalMoves.Where(m =>
-                        (m.IsCapture && m.ToIdx == checkers.LastSignificantBitIndex())
-                        || (m.IsEnPassant && m.EnPassantCaptureTarget == checkers.LastSignificantBitIndex())
+                        (m.FromMask & pinned) == 0
+                        && (
+                            m.IsCapture && m.ToIdx == checkers.LastSignificantBitIndex()
+                            || m.IsEnPassant && m.EnPassantCaptureTarget == checkers.LastSignificantBitIndex()
+                        )
                     );
 
                     if (checkerCaptures.Any())
