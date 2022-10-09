@@ -4,6 +4,10 @@ namespace RV.Chess.PGN
 {
     public class PgnTree
     {
+        public PgnTree(PgnGame game): this(new List<PgnGame>() { game })
+        {
+        }
+
         public PgnTree(IEnumerable<PgnGame> games)
         {
             var id = 0;
