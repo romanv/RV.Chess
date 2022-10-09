@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Diagnostics;
+using System.Text;
 
 namespace RV.Chess.PGN
 {
@@ -49,7 +50,7 @@ namespace RV.Chess.PGN
 
             while (position < text.Length)
             {
-                if (text[position] == '[')
+                if (text[position] == '[' && !insideComment)
                 {
                     insideTag = true;
                     sb.Append(text[position]);
