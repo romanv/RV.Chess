@@ -311,8 +311,13 @@
             {
                 case PieceType.Pawn:
                     var wasPinnedAlongFile = (m.FromIdx % 8) == (ownKingSquare % 8);
+                    var wasPinnedAlongRank = (m.FromIdx / 8) == (ownKingSquare / 8);
 
-                    if (wasPinnedAlongFile)
+                    if (wasPinnedAlongRank)
+                    {
+                        return false;
+                    }
+                    else if (wasPinnedAlongFile)
                     {
                         // allow movement along the file
                         return (m.ToIdx % 8) == (ownKingSquare % 8);
