@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Text;
+﻿using System.Text;
 
 namespace RV.Chess.PGN
 {
@@ -7,9 +6,8 @@ namespace RV.Chess.PGN
     {
         const int MAX_BUFFER = 1024 * 1024;
 
-        public static IReadOnlyList<PgnGame> Parse(string path)
+        public static IEnumerable<PgnGame> Parse(string path)
         {
-            var result = new List<PgnGame>();
             var previousPart = string.Empty;
             var buffer = new byte[MAX_BUFFER];
             int bytesRead;
@@ -31,13 +29,11 @@ namespace RV.Chess.PGN
 
                 foreach (var gameText in games)
                 {
-                    result.Add(PgnGame.FromString(gameText));
+                    yield return PgnGame.FromString(gameText);
                 }
 
                 previousPart = remainder;
             }
-
-            return result.AsReadOnly();
         }
 
         private static (List<string>, string) GetCompleteGameChunks(string text)
