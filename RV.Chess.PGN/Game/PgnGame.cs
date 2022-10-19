@@ -1,4 +1,6 @@
-﻿namespace RV.Chess.PGN
+﻿using System.Text;
+
+namespace RV.Chess.PGN
 {
     public class PgnGame : PgnMovetextNode
     {
@@ -86,6 +88,44 @@
             }
 
             return result;
+        }
+
+        public override string ToString()
+        {
+            var sb = new StringBuilder();
+
+            foreach (var tag in Tags)
+            {
+                sb.Append($"[{tag.Key} \"{tag.Value}\"]");
+                sb.Append(Environment.NewLine);
+            }
+
+            sb.Append(Environment.NewLine);
+            PgnNode? prv = null;
+
+            foreach (var move in Moves)
+            {
+                if (move is PgnMoveNode mn)
+                {
+                    if (prv != null && prv is PgnMoveNode prvMoveNode && prvMoveNode.Side == Side.White)
+                    {
+                        sb.Append(mn.San);
+                    }
+                    else
+                    {
+                        sb.Append(mn.ToString());
+                    }
+                }
+                else
+                {
+                    sb.Append(move.ToString());
+                }
+
+                sb.Append(' ');
+                prv = move;
+            }
+
+            return sb.ToString().Trim();
         }
     }
 }
