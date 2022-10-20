@@ -30,26 +30,26 @@ namespace RV.Chess.Board
                     {
                         if (m.IsMate)
                         {
-                            sb.Append("#");
+                            sb.Append('#');
                         }
                         else
                         {
-                            sb.Append("+");
+                            sb.Append('+');
                         }
                     }
                 }
                 else
                 {
                     // normal moves
-                    if (m.Piece.Type != PieceType.Pawn)
+                    if (m.PieceType != PieceType.Pawn)
                     {
-                        sb.Append(m.Piece.TypeChar);
+                        sb.Append(m.PieceType.TypeChar());
 
                         var alternativeAttackers = 0UL;
 
                         foreach (var mb in moves)
                         {
-                            if (m.Piece.Type == mb.Piece.Type && m.ToIdx == mb.ToIdx && m.FromIdx != mb.FromIdx)
+                            if (m.PieceType == mb.PieceType && m.ToIdx == mb.ToIdx && m.FromIdx != mb.FromIdx)
                             {
                                 alternativeAttackers |= mb.FromMask;
                             }

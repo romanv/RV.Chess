@@ -10,7 +10,7 @@ namespace RV.Chess.Board.Tests
         {
             var game = new Chessgame();
             game.SetFen("7k/8/8/8/8/8/p7/R1p4K w - - 0 1");
-            var rookMoves = game.GenerateMoves().Where(m => m.Piece.Type is PieceType.Rook);
+            var rookMoves = game.GenerateMoves().Where(m => m.PieceType is PieceType.Rook);
 
             Assert.Single(rookMoves.Where(m => m.San == "Rb1"));
             Assert.Single(rookMoves.Where(m => m.San == "Rxa2"));
@@ -21,7 +21,7 @@ namespace RV.Chess.Board.Tests
         {
             var game = new Chessgame();
             game.SetFen("7k/8/8/8/P7/RP6/pP6/RN5K w - - 0 1");
-            var rookMoves = game.GenerateMoves().Where(m => m.Piece.Type is PieceType.Rook);
+            var rookMoves = game.GenerateMoves().Where(m => m.PieceType is PieceType.Rook);
 
             Assert.Single(rookMoves.Where(m => m.San == "R1xa2"));
             Assert.Single(rookMoves.Where(m => m.San == "R3xa2"));

@@ -13,7 +13,7 @@ namespace RV.Chess.Board.Tests
         {
             var game = new Chessgame();
             game.SetFen(fen);
-            var knightMoves = game.GenerateMoves().Where(m => m.Piece.Type is PieceType.Knight).ToList();
+            var knightMoves = game.GenerateMoves().Where(m => m.PieceType is PieceType.Knight).ToList();
             Assert.Equal(allowedTargetSquares.Length, knightMoves.Count);
             Assert.True(allowedTargetSquares.All(ts => knightMoves.Find(rm => rm.From == sourceSquare && rm.To == ts) != null));
         }
@@ -57,11 +57,11 @@ namespace RV.Chess.Board.Tests
 
             // all moves are blocked
             game.SetFen("6k1/8/8/8/8/Q7/P7/6K1 w - - 4 18");
-            Assert.Empty(game.GenerateMoves().Where(m => m.Piece.Type == PieceType.Pawn));
+            Assert.Empty(game.GenerateMoves().Where(m => m.PieceType == PieceType.Pawn));
 
             // only double move is blocked
             game.SetFen("6k1/8/8/8/Q7/8/P7/6K1 w - - 4 18");
-            Assert.Single(game.GenerateMoves().Where(m => m.Piece.Type == PieceType.Pawn));
+            Assert.Single(game.GenerateMoves().Where(m => m.PieceType == PieceType.Pawn));
         }
 
         [Fact]
@@ -87,7 +87,7 @@ namespace RV.Chess.Board.Tests
         {
             var game = new Chessgame();
             game.SetFen(fen);
-            var kingMoves = game.GenerateMoves().Where(m => m.Piece.Type is PieceType.King).ToList();
+            var kingMoves = game.GenerateMoves().Where(m => m.PieceType is PieceType.King).ToList();
             Assert.Equal(allowedTargetSquares.Length, kingMoves.Count);
             Assert.True(allowedTargetSquares.All(ts => kingMoves.Find(rm => rm.From == sourceSquare && rm.To == ts) != null));
         }
@@ -102,7 +102,7 @@ namespace RV.Chess.Board.Tests
         {
             var game = new Chessgame();
             game.SetFen(fen);
-            var kingMoves = game.GenerateMoves().Where(m => m.Piece.Type is PieceType.King).ToList();
+            var kingMoves = game.GenerateMoves().Where(m => m.PieceType is PieceType.King).ToList();
             Assert.Equal(allowedTargetSquares.Length, kingMoves.Count);
             Assert.True(allowedTargetSquares.All(ts => kingMoves.Find(rm => rm.From == sourceSquare && rm.To == ts) != null));
         }
@@ -117,7 +117,7 @@ namespace RV.Chess.Board.Tests
         {
             var game = new Chessgame();
             game.SetFen(fen);
-            var castlingMoves = game.GenerateMoves().Where(m => m.Piece.Type is PieceType.King && m.IsCastling).ToList();
+            var castlingMoves = game.GenerateMoves().Where(m => m.PieceType is PieceType.King && m.IsCastling).ToList();
             Assert.Equal(allowedTargetSquares.Length, castlingMoves.Count);
             Assert.True(allowedTargetSquares.All(ts => castlingMoves.Find(rm => rm.From == sourceSquare && rm.To == ts) != null));
         }
@@ -130,7 +130,7 @@ namespace RV.Chess.Board.Tests
         {
             var game = new Chessgame();
             game.SetFen(fen);
-            var castlingMoves = game.GenerateMoves().Where(m => m.Piece.Type is PieceType.King && m.IsCastling).ToList();
+            var castlingMoves = game.GenerateMoves().Where(m => m.PieceType is PieceType.King && m.IsCastling).ToList();
             Assert.Empty(castlingMoves);
         }
 
@@ -196,7 +196,7 @@ namespace RV.Chess.Board.Tests
         {
             var game = new Chessgame();
             game.SetFen(fen);
-            var rookMoves = game.GenerateMoves().Where(m => m.Piece.Type is PieceType.Rook).ToList();
+            var rookMoves = game.GenerateMoves().Where(m => m.PieceType is PieceType.Rook).ToList();
             Assert.Equal(allowedTargetSquares.Length, rookMoves.Count);
             Assert.True(allowedTargetSquares.All(ts => rookMoves.Find(rm => rm.From == sourceSquare && rm.To == ts) != null));
         }
@@ -211,7 +211,7 @@ namespace RV.Chess.Board.Tests
         {
             var game = new Chessgame();
             game.SetFen(fen);
-            var bishopMoves = game.GenerateMoves().Where(m => m.Piece.Type is PieceType.Bishop).ToList();
+            var bishopMoves = game.GenerateMoves().Where(m => m.PieceType is PieceType.Bishop).ToList();
             Assert.Equal(allowedTargetSquares.Length, bishopMoves.Count);
             Assert.True(allowedTargetSquares.All(ts => bishopMoves.Find(rm => rm.From == sourceSquare && rm.To == ts) != null));
         }
@@ -225,7 +225,7 @@ namespace RV.Chess.Board.Tests
         {
             var game = new Chessgame();
             game.SetFen(fen);
-            var queenMoves = game.GenerateMoves().Where(m => m.Piece.Type is PieceType.Queen).ToList();
+            var queenMoves = game.GenerateMoves().Where(m => m.PieceType is PieceType.Queen).ToList();
             Assert.Equal(allowedTargetSquares.Length, queenMoves.Count);
             Assert.True(allowedTargetSquares.All(ts => queenMoves.Find(rm => rm.From == sourceSquare && rm.To == ts) != null));
         }
@@ -239,7 +239,7 @@ namespace RV.Chess.Board.Tests
         {
             var game = new Chessgame();
             game.SetFen(fen);
-            var knightMoves = game.GenerateMoves().Where(m => m.Piece.Type is PieceType.Knight).ToList();
+            var knightMoves = game.GenerateMoves().Where(m => m.PieceType is PieceType.Knight).ToList();
             Assert.Empty(knightMoves);
         }
 
@@ -251,7 +251,7 @@ namespace RV.Chess.Board.Tests
         {
             var game = new Chessgame();
             game.SetFen(fen);
-            Assert.Empty(game.GenerateMoves().Where(m => m.Piece.Type is PieceType.Pawn));
+            Assert.Empty(game.GenerateMoves().Where(m => m.PieceType is PieceType.Pawn));
         }
 
         [Theory]
@@ -260,7 +260,7 @@ namespace RV.Chess.Board.Tests
         {
             var game = new Chessgame();
             game.SetFen(fen);
-            var pawnMoves = game.GenerateMoves().Where(m => m.Piece.Type is PieceType.Pawn).ToList();
+            var pawnMoves = game.GenerateMoves().Where(m => m.PieceType is PieceType.Pawn).ToList();
             Assert.Equal(allowedTargetSquares.Length, pawnMoves.Count);
             Assert.True(allowedTargetSquares.All(ts => pawnMoves.Find(rm => rm.From == sourceSquare && rm.To == ts) != null));
         }

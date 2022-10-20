@@ -30,9 +30,10 @@ namespace RV.Chess.Board.Tests
             Assert.False(board.IsOccupied("a3"));
             board.AddPiece(PieceType.Bishop, Side.Black, "a3");
             Assert.True(board.IsOccupied("a3"));
-            var (type, color) = board.GetPieceAt("a3");
+            var type = board.GetPieceTypeAt("a3");
+            var side = board.GetPieceSideAt("a3");
             Assert.Equal(PieceType.Bishop, type);
-            Assert.Equal(Side.Black, color);
+            Assert.Equal(Side.Black, side);
         }
 
         [Fact]

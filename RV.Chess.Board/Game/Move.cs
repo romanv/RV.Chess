@@ -2,8 +2,8 @@
 {
     public sealed record Move
     {
-        public Move(Piece piece, string from, string to, bool isCapture = false, bool isCheck = false,
-            bool isEnPassant = false, PieceType promoteTo = PieceType.None,
+        public Move(PieceType pieceType, Side side, string from, string to, bool isCapture = false,
+            bool isCheck = false, bool isEnPassant = false, PieceType promoteTo = PieceType.None,
             CastlingDirection castling = CastlingDirection.None)
         {
             From = from;
@@ -11,7 +11,8 @@
             IsCapture = isCapture;
             IsCheck = isCheck;
             IsEnPassant = isEnPassant;
-            Piece = piece;
+            PieceType = pieceType;
+            Side = side;
             PromoteTo = promoteTo;
             To = to;
             ToIdx = Chessboard.SquareToIdx(to);
@@ -20,8 +21,8 @@
             Castling = castling;
         }
 
-        public Move(Piece piece, int from, int to, bool isCapture = false, bool isCheck = false,
-            bool isEnPassant = false, PieceType promoteTo = PieceType.None,
+        public Move(PieceType pieceType, Side side, int from, int to, bool isCapture = false,
+            bool isCheck = false, bool isEnPassant = false, PieceType promoteTo = PieceType.None,
             CastlingDirection castling = CastlingDirection.None)
         {
             FromIdx = from;
@@ -29,7 +30,8 @@
             IsCapture = isCapture;
             IsCheck = isCheck;
             IsEnPassant = isEnPassant;
-            Piece = piece;
+            PieceType = pieceType;
+            Side = side;
             PromoteTo = promoteTo;
             ToIdx = to;
             To = Chessboard.IdxToSquare(to);
@@ -53,7 +55,9 @@
             San = san;
         }
 
-        public Piece Piece { get; }
+        public PieceType PieceType { get; }
+
+        public Side Side { get; }
 
         public int FromIdx { get; }
 
@@ -82,7 +86,7 @@
             || Castling.HasFlag(CastlingDirection.BlackQueenside);
 
         public int EnPassantCaptureTarget => IsEnPassant
-            ? Piece.Side == Side.White
+            ? Side == Side.White
                 ? ToIdx - 8
                 : ToIdx + 8
             : -1;

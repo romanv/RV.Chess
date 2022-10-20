@@ -40,10 +40,10 @@
 
         internal static IList<Move> GetBishopMovesFrom(Chessboard board, int bishopSquare, ulong ownBlockers, int enemyKingSquare)
         {
-            var targetSquares = GetDiagonalMoves(bishopSquare, board.OccupiedBoard.Board);
+            var targetSquares = GetDiagonalMoves(bishopSquare, board.OccupiedBoard);
             targetSquares &= ~ownBlockers;
-            var piece = board.GetPieceAt(bishopSquare);
-            var result = GenerateMovesFromBitboard(bishopSquare, piece, board.OccupiedBoard.Board,
+            var side = board.GetPieceSideAt(bishopSquare);
+            var result = GenerateMovesFromBitboard(bishopSquare, PieceType.Bishop, side, board.OccupiedBoard,
                 ownBlockers, targetSquares, enemyKingSquare);
 
             return result;
@@ -51,11 +51,11 @@
 
         internal static IList<Move> GetQueenMovesFrom(Chessboard board, int queenSquare, ulong ownBlockers, int enemyKingSquare)
         {
-            var targetSquares = GetDiagonalMoves(queenSquare, board.OccupiedBoard.Board)
-                | GetHorizontalVerticalMoves(queenSquare, board.OccupiedBoard.Board);
+            var targetSquares = GetDiagonalMoves(queenSquare, board.OccupiedBoard)
+                | GetHorizontalVerticalMoves(queenSquare, board.OccupiedBoard);
             targetSquares &= ~ownBlockers;
-            var piece = board.GetPieceAt(queenSquare);
-            var result = GenerateMovesFromBitboard(queenSquare,piece, board.OccupiedBoard.Board,
+            var side = board.GetPieceSideAt(queenSquare);
+            var result = GenerateMovesFromBitboard(queenSquare, PieceType.Queen, side, board.OccupiedBoard,
                 ownBlockers, targetSquares, enemyKingSquare);
 
             return result;
@@ -63,10 +63,10 @@
 
         internal static IList<Move> GetRookMovesFrom(Chessboard board, int rookSquare, ulong ownBlockers, int enemyKingSquare)
         {
-            var targetSquares = GetHorizontalVerticalMoves(rookSquare, board.OccupiedBoard.Board);
+            var targetSquares = GetHorizontalVerticalMoves(rookSquare, board.OccupiedBoard);
             targetSquares &= ~ownBlockers;
-            var piece = board.GetPieceAt(rookSquare);
-            var result = GenerateMovesFromBitboard(rookSquare, piece, board.OccupiedBoard.Board,
+            var side = board.GetPieceSideAt(rookSquare);
+            var result = GenerateMovesFromBitboard(rookSquare, PieceType.Rook, side, board.OccupiedBoard,
                 ownBlockers, targetSquares, enemyKingSquare);
 
             return result;
@@ -75,38 +75,38 @@
         internal static IList<Move> GetKingMovesFrom(Chessboard board, int kingSquare, ulong ownBlockers,
             bool kingInCheck, CastlingRights castlingRights)
         {
-            var king = board.GetPieceAt(kingSquare);
+            var side = board.GetPieceSideAt(kingSquare);
             // impossible enemy king square (64) is used, because king can't make a check anyway
-            var moves = GetMovesFromPrecalculatedAttacks(kingSquare, king, board.OccupiedBoard.Board,
+            var moves = GetMovesFromPrecalculatedAttacks(kingSquare, PieceType.King, side, board.OccupiedBoard,
                 ownBlockers, KingAttacks, 64);
 
             // castling
             if (castlingRights.Rights != CastlingDirection.None && !kingInCheck)
             {
-                var canCastleKingside = king.Side == Side.White && castlingRights.Can(CastlingDirection.WhiteKingside)
-                    || king.Side == Side.Black && castlingRights.Can(CastlingDirection.BlackKingside);
-                var canCastleQueenside = king.Side == Side.White && castlingRights.Can(CastlingDirection.WhiteQueenside)
-                    || king.Side == Side.Black && castlingRights.Can(CastlingDirection.BlackQueenside);
+                var canCastleKingside = side == Side.White && castlingRights.Can(CastlingDirection.WhiteKingside)
+                    || side == Side.Black && castlingRights.Can(CastlingDirection.BlackKingside);
+                var canCastleQueenside = side == Side.White && castlingRights.Can(CastlingDirection.WhiteQueenside)
+                    || side == Side.Black && castlingRights.Can(CastlingDirection.BlackQueenside);
 
                 if (canCastleKingside
-                    && IsSafeCastleBetween(board, kingSquare, kingSquare + 3, king.Side))
+                    && IsSafeCastleBetween(board, kingSquare, kingSquare + 3, side))
                 {
-                    var castleDirection = king.Side == Side.White ? CastlingDirection.WhiteKingside : CastlingDirection.BlackKingside;
-                    moves.Add(new Move(king, kingSquare, kingSquare + 2, castling: castleDirection));
+                    var castleDirection = side == Side.White ? CastlingDirection.WhiteKingside : CastlingDirection.BlackKingside;
+                    moves.Add(new Move(PieceType.King, side, kingSquare, kingSquare + 2, castling: castleDirection));
                 }
 
                 if (canCastleQueenside
-                    && IsSafeCastleBetween(board, kingSquare, kingSquare - 3, king.Side))
+                    && IsSafeCastleBetween(board, kingSquare, kingSquare - 3, side))
                 {
-                    var castleDirection = king.Side == Side.White ? CastlingDirection.WhiteQueenside : CastlingDirection.BlackQueenside;
-                    moves.Add(new Move(king, kingSquare, kingSquare - 2, castling: castleDirection));
+                    var castleDirection = side == Side.White ? CastlingDirection.WhiteQueenside : CastlingDirection.BlackQueenside;
+                    moves.Add(new Move(PieceType.King, side, kingSquare, kingSquare - 2, castling: castleDirection));
                 }
             }
 
             return moves;
         }
 
-        private static bool IsSafeCastleBetween(Chessboard board, int kingSquare, int rookSquare, Side kingColor)
+        private static bool IsSafeCastleBetween(Chessboard board, int kingSquare, int rookSquare, Side kingSide)
         {
             var castlingRay = RayBetween(kingSquare, rookSquare);
 
@@ -120,7 +120,7 @@
                 var square = castlingRay.LastSignificantBitIndex();
 
                 // can't castle if there are pieces on the castle line or castling squares are under attack
-                if (IsSquareAttacked(board, square, kingColor.Opposite()))
+                if (IsSquareAttacked(board, square, kingSide.Opposite()))
                 {
                     return false;
                 }
@@ -133,53 +133,53 @@
 
         internal static IList<Move> GetKnightMovesFrom(Chessboard board, int knightSquare, ulong ownBlockers, int enemyKingSquare)
         {
-            var piece = board.GetPieceAt(knightSquare);
-            return GetMovesFromPrecalculatedAttacks(knightSquare, piece, board.OccupiedBoard.Board,
+            var side = board.GetPieceSideAt(knightSquare);
+            return GetMovesFromPrecalculatedAttacks(knightSquare, PieceType.Knight, side, board.OccupiedBoard,
                 ownBlockers, KnightAttacks, enemyKingSquare);
         }
 
         internal static IList<Move> GetPawnMovesFrom(Chessboard board, int sourceSquare, ulong ownBlockers, int enPassantSquare)
         {
             var result = new List<Move>();
-            var pawn = board.GetPieceAt(sourceSquare);
+            var side = board.GetPieceSideAt(sourceSquare);
 
             // quiet 1-square moves and promotions
-            var singleMoveTargetSquare = pawn.Side == Side.White ? sourceSquare + 8 : sourceSquare - 8;
-            var isPromotion = (pawn.Side == Side.White && singleMoveTargetSquare > 55)
-                || (pawn.Side == Side.Black && singleMoveTargetSquare < 8);
+            var singleMoveTargetSquare = side == Side.White ? sourceSquare + 8 : sourceSquare - 8;
+            var isPromotion = (side == Side.White && singleMoveTargetSquare > 55)
+                || (side == Side.Black && singleMoveTargetSquare < 8);
 
-            if (!Bitboard.OccupiedAt(board.OccupiedBoard.Board, singleMoveTargetSquare))
+            if (!board.OccupiedBoard.OccupiedAt(singleMoveTargetSquare))
             {
                 if (isPromotion)
                 {
-                    result.Add(new Move(pawn, sourceSquare, singleMoveTargetSquare, false, false, false, PieceType.Bishop));
-                    result.Add(new Move(pawn, sourceSquare, singleMoveTargetSquare, false, false, false, PieceType.Knight));
-                    result.Add(new Move(pawn, sourceSquare, singleMoveTargetSquare, false, false, false, PieceType.Queen));
-                    result.Add(new Move(pawn, sourceSquare, singleMoveTargetSquare, false, false, false, PieceType.Rook));
+                    result.Add(new Move(PieceType.Pawn, side, sourceSquare, singleMoveTargetSquare, promoteTo: PieceType.Bishop));
+                    result.Add(new Move(PieceType.Pawn, side, sourceSquare, singleMoveTargetSquare, promoteTo: PieceType.Knight));
+                    result.Add(new Move(PieceType.Pawn, side, sourceSquare, singleMoveTargetSquare, promoteTo: PieceType.Queen));
+                    result.Add(new Move(PieceType.Pawn, side, sourceSquare, singleMoveTargetSquare, promoteTo: PieceType.Rook));
                 }
                 else
                 {
-                    result.Add(new Move(pawn, sourceSquare, singleMoveTargetSquare));
+                    result.Add(new Move(PieceType.Pawn, side, sourceSquare, singleMoveTargetSquare));
                 }
             }
 
             // quiet 2-squares move
-            var isDoubleMoveAvailable = pawn.Side == Side.White
+            var isDoubleMoveAvailable = side == Side.White
                 ? (sourceSquare >= 8 && sourceSquare <= 15)
                 : (sourceSquare >= 48 && sourceSquare <= 55);
 
             if (isDoubleMoveAvailable)
             {
-                var doubleMoveTargetSquare = pawn.Side == Side.White ? sourceSquare + 16 : sourceSquare - 16;
+                var doubleMoveTargetSquare = side == Side.White ? sourceSquare + 16 : sourceSquare - 16;
 
-                if (!Bitboard.OccupiedAt(board.OccupiedBoard.Board, singleMoveTargetSquare)
-                    && !Bitboard.OccupiedAt(board.OccupiedBoard.Board, doubleMoveTargetSquare))
+                if (!board.OccupiedBoard.OccupiedAt(singleMoveTargetSquare)
+                    && !board.OccupiedBoard.OccupiedAt(doubleMoveTargetSquare))
                 {
-                    result.Add(new Move(pawn, sourceSquare, doubleMoveTargetSquare));
+                    result.Add(new Move(PieceType.Pawn, side, sourceSquare, doubleMoveTargetSquare));
                 }
             }
 
-            var attacks = pawn.Side == Side.White ? PawnAttacksWhite[sourceSquare] : PawnAttacksBlack[sourceSquare];
+            var attacks = side == Side.White ? PawnAttacksWhite[sourceSquare] : PawnAttacksBlack[sourceSquare];
 
             while (attacks > 0)
             {
@@ -187,21 +187,21 @@
                 var targetMask = 1UL << targetSquare;
                 var isEnPassant = enPassantSquare == targetSquare;
 
-                if ((board.GetOccupiedByColor(pawn.Side.Opposite()).Board & targetMask) > 0 || isEnPassant)
+                if ((board.GetOccupiedBySide(side.Opposite()) & targetMask) > 0 || isEnPassant)
                 {
-                    var withPromotion = (pawn.Side == Side.White && targetSquare > 55)
-                    || (pawn.Side == Side.Black && targetSquare < 8);
+                    var withPromotion = (side == Side.White && targetSquare > 55)
+                    || (side == Side.Black && targetSquare < 8);
 
                     if (withPromotion)
                     {
-                        result.Add(new Move(pawn, sourceSquare, targetSquare, true, false, isEnPassant, PieceType.Bishop));
-                        result.Add(new Move(pawn, sourceSquare, targetSquare, true, false, isEnPassant, PieceType.Knight));
-                        result.Add(new Move(pawn, sourceSquare, targetSquare, true, false, isEnPassant, PieceType.Queen));
-                        result.Add(new Move(pawn, sourceSquare, targetSquare, true, false, isEnPassant, PieceType.Rook));
+                        result.Add(new Move(PieceType.Pawn, side, sourceSquare, targetSquare, true, false, isEnPassant, PieceType.Bishop));
+                        result.Add(new Move(PieceType.Pawn, side, sourceSquare, targetSquare, true, false, isEnPassant, PieceType.Knight));
+                        result.Add(new Move(PieceType.Pawn, side, sourceSquare, targetSquare, true, false, isEnPassant, PieceType.Queen));
+                        result.Add(new Move(PieceType.Pawn, side, sourceSquare, targetSquare, true, false, isEnPassant, PieceType.Rook));
                     }
                     else
                     {
-                        result.Add(new Move(pawn, sourceSquare, targetSquare, true, false, isEnPassant));
+                        result.Add(new Move(PieceType.Pawn, side, sourceSquare, targetSquare, true, false, isEnPassant));
                     }
                 }
 
@@ -233,68 +233,66 @@
             return pinnedPieces;
         }
 
-        internal static ulong GetSquareAttackers(Chessboard board, int square, Side attackerColor)
+        internal static ulong GetSquareAttackers(Chessboard board, int square, Side attackerSide)
         {
-            var attackerRooks = board.GetPieceBoardByColor(attackerColor, PieceType.Rook).Board;
-            var attackerBishops = board.GetPieceBoardByColor(attackerColor, PieceType.Bishop).Board;
-            var attackerQueens = board.GetPieceBoardByColor(attackerColor, PieceType.Queen).Board;
-            var attackerKnights = board.GetPieceBoardByColor(attackerColor, PieceType.Knight).Board;
-            var attackerKing = board.GetPieceBoardByColor(attackerColor, PieceType.King).Board;
-            // to find pawn attacks to our square, we can use pawn attacks FROM our square with reversed color
-            var reverseColorPawnAttacks = attackerColor == Side.White ? PawnAttacksBlack[square] : PawnAttacksWhite[square];
-            var attackerPawns = board.GetPieceBoardByColor(attackerColor, PieceType.Pawn);
-
+            var attackerRooks = board.GetPieceBoard(PieceType.Rook, attackerSide);
+            var attackerBishops = board.GetPieceBoard(PieceType.Bishop, attackerSide);
+            var attackerQueens = board.GetPieceBoard(PieceType.Queen, attackerSide);
+            var attackerKnights = board.GetPieceBoard(PieceType.Knight, attackerSide);
+            var attackerKing = board.GetPieceBoard(PieceType.King, attackerSide);
+            // to find pawn attacks to our square, we can use pawn attacks FROM our square with reversed sides
+            var reverseSidePawnAttacks = attackerSide == Side.White ? PawnAttacksBlack[square] : PawnAttacksWhite[square];
+            var attackerPawns = board.GetPieceBoard(PieceType.Pawn, attackerSide);
             // remove own king from occupancy, since it cant block checks anyway
-            var occupiedNoOwnKing = board.OccupiedBoard.Board
-                & ~board.GetPieceBoardByColor(attackerColor.Opposite(), PieceType.King).Board;
-
+            var occupiedNoOwnKing = board.OccupiedBoard
+                & ~board.GetPieceBoard(PieceType.King, attackerSide.Opposite());
             var knightAttackers = KnightAttacks[square] & attackerKnights;
             var rookAttackers = GetHorizontalVerticalMoves(square, occupiedNoOwnKing)
                 & (attackerRooks | attackerQueens);
             var bishopAttackers = GetDiagonalMoves(square, occupiedNoOwnKing)
                 & (attackerBishops | attackerQueens);
-            var pawnAttackers = reverseColorPawnAttacks & attackerPawns;
+            var pawnAttackers = reverseSidePawnAttacks & attackerPawns;
             var kingAttackers = KingAttacks[square] & attackerKing;
 
             return knightAttackers | rookAttackers | bishopAttackers | pawnAttackers | kingAttackers;
         }
 
-        internal static bool IsKingMoveSafe(Chessboard board, Move m, Side kingColor)
-            => GetSquareAttackers(board, m.ToIdx, kingColor.Opposite()) == 0;
+        internal static bool IsKingMoveSafe(Chessboard board, Move m, Side kingSide)
+            => GetSquareAttackers(board, m.ToIdx, kingSide.Opposite()) == 0;
 
-        internal static bool IsSquareAttacked(Chessboard board, int square, Side attackerColor)
+        internal static bool IsSquareAttacked(Chessboard board, int square, Side attackerSide)
         {
             var knightAttackSources = KnightAttacks[square];
 
-            if ((knightAttackSources & board.GetPieceBoardByColor(attackerColor, PieceType.Knight)) > 0)
+            if ((knightAttackSources & board.GetPieceBoard(PieceType.Knight, attackerSide)) > 0)
             {
                 return true;
             }
 
-            var rookAttacks = GetHorizontalVerticalMoves(square, board.OccupiedBoard.Board);
+            var rookAttacks = GetHorizontalVerticalMoves(square, board.OccupiedBoard);
 
-            if ((rookAttacks & board.GetPieceBoardByColor(attackerColor, PieceType.Rook)) > 0
-                || (rookAttacks & board.GetPieceBoardByColor(attackerColor, PieceType.Queen)) > 0)
+            if ((rookAttacks & board.GetPieceBoard(PieceType.Rook, attackerSide)) > 0
+                || (rookAttacks & board.GetPieceBoard(PieceType.Queen, attackerSide)) > 0)
             {
                 return true;
             }
 
-            var bishopAttacks = GetDiagonalMoves(square, board.OccupiedBoard.Board);
+            var bishopAttacks = GetDiagonalMoves(square, board.OccupiedBoard);
 
-            if ((bishopAttacks & board.GetPieceBoardByColor(attackerColor, PieceType.Bishop)) > 0
-                || (bishopAttacks & board.GetPieceBoardByColor(attackerColor, PieceType.Queen)) > 0)
+            if ((bishopAttacks & board.GetPieceBoard(PieceType.Bishop, attackerSide)) > 0
+                || (bishopAttacks & board.GetPieceBoard(PieceType.Queen, attackerSide)) > 0)
             {
                 return true;
             }
 
-            var pawnAttacks = attackerColor == Side.White ? PawnAttacksBlack[square] : PawnAttacksWhite[square];
+            var pawnAttacks = attackerSide == Side.White ? PawnAttacksBlack[square] : PawnAttacksWhite[square];
 
-            if ((pawnAttacks & board.GetPieceBoardByColor(attackerColor, PieceType.Pawn)) > 0)
+            if ((pawnAttacks & board.GetPieceBoard(PieceType.Pawn, attackerSide)) > 0)
             {
                 return true;
             }
 
-            if ((KingAttacks[square] & board.GetPieceBoardByColor(attackerColor, PieceType.King)) > 0)
+            if ((KingAttacks[square] & board.GetPieceBoard(PieceType.King, attackerSide)) > 0)
             {
                 return true;
             }
@@ -307,7 +305,7 @@
             // if the piece was pinned, it should stay on the same line with the king to keep the pin
             // (from, to and king squares should all be aligned)
             // difference between aligned indices is 9*x for the diagonal and 7*x for anti-diagonal
-            switch (m.Piece.Type)
+            switch (m.PieceType)
             {
                 case PieceType.Pawn:
                     var wasPinnedAlongFile = (m.FromIdx % 8) == (ownKingSquare % 8);
@@ -382,19 +380,19 @@
         private static ulong GetPinners(Chessboard board, Side sideToMove)
         {
             var kingSquare = board.GetKingSquare(sideToMove);
-            var enemyColor = sideToMove.Opposite();
+            var enemySide = sideToMove.Opposite();
 
             if (kingSquare < 0)
             {
                 return 0;
             }
 
-            var enemyRooks = board.GetPieceBoardByColor(enemyColor, PieceType.Rook);
-            var enemyBishops = board.GetPieceBoardByColor(enemyColor, PieceType.Bishop);
-            var enemyQueens = board.GetPieceBoardByColor(enemyColor, PieceType.Queen);
-            var kingLinearRays = GetHorizontalVerticalMoves(kingSquare, enemyRooks.Board);
+            var enemyRooks = board.GetPieceBoard(PieceType.Rook, enemySide);
+            var enemyBishops = board.GetPieceBoard(PieceType.Bishop, enemySide);
+            var enemyQueens = board.GetPieceBoard(PieceType.Queen, enemySide);
+            var kingLinearRays = GetHorizontalVerticalMoves(kingSquare, enemyRooks);
             var pinnerRooks = kingLinearRays & enemyRooks;
-            var kingDiagonalRays = GetDiagonalMoves(kingSquare, enemyBishops.Board);
+            var kingDiagonalRays = GetDiagonalMoves(kingSquare, enemyBishops);
             var pinnerBishops = kingDiagonalRays & enemyBishops;
             var pinnerQueens = (kingLinearRays | kingDiagonalRays) & enemyQueens;
 
@@ -458,17 +456,17 @@
             return horizontal | vertical;
         }
 
-        private static IList<Move> GetMovesFromPrecalculatedAttacks(int sourceSquare, Piece piece, ulong occupied,
-            ulong ownBlockers, ulong[] attacks, int enemyKingSquare)
+        private static IList<Move> GetMovesFromPrecalculatedAttacks(int sourceSquare, PieceType pieceType, Side side,
+            ulong occupied, ulong ownBlockers, ulong[] attacks, int enemyKingSquare)
         {
             var targetSquares = attacks[sourceSquare] & ~ownBlockers;
-            var result = GenerateMovesFromBitboard(sourceSquare, piece, occupied,
+            var result = GenerateMovesFromBitboard(sourceSquare, pieceType, side, occupied,
                 ownBlockers, targetSquares, enemyKingSquare);
 
             return result;
         }
 
-        private static IList<Move> GenerateMovesFromBitboard(int sourceSquare, Piece piece,
+        private static IList<Move> GenerateMovesFromBitboard(int sourceSquare, PieceType pieceType, Side side,
             ulong occupied, ulong ownBlockers, ulong targetSquares, int enemyKingSquare)
         {
             var result = new List<Move>();
@@ -476,10 +474,9 @@
             while (targetSquares > 0)
             {
                 var targetSquareIdx = targetSquares.LastSignificantBitIndex();
-                var isCapture = Bitboard.OccupiedAt(occupied, targetSquareIdx)
-                    && !Bitboard.OccupiedAt(ownBlockers, targetSquareIdx);
+                var isCapture = occupied.OccupiedAt(targetSquareIdx) && !ownBlockers.OccupiedAt(targetSquareIdx);
                 var isCheck = targetSquareIdx == enemyKingSquare;
-                result.Add(new Move(piece, sourceSquare, targetSquareIdx, isCapture, isCheck));
+                result.Add(new Move(pieceType, side, sourceSquare, targetSquareIdx, isCapture, isCheck));
                 targetSquares &= ~(1UL << targetSquareIdx);
             }
 

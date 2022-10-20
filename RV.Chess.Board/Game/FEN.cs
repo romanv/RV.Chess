@@ -14,9 +14,9 @@ namespace RV.Chess.Board
 
                 for (var file = 0; file < 8; file++)
                 {
-                    var piece = game.Board.GetPieceAt(rank * 8 + file);
+                    var pieceType = game.Board.GetPieceTypeAt(rank * 8 + file);
 
-                    if (piece.Type == PieceType.None)
+                    if (pieceType == PieceType.None)
                     {
                         emptyFilesCount++;
                     }
@@ -28,7 +28,8 @@ namespace RV.Chess.Board
                             emptyFilesCount = 0;
                         }
 
-                        fen.Append(piece.ToChar());
+                        var pieceSide = game.Board.GetPieceSideAt(rank * 8 + file);
+                        fen.Append(pieceType.ToChar(pieceSide));
                     }
                 }
 
@@ -69,16 +70,16 @@ namespace RV.Chess.Board
 
             FillBoard(parts[0], game.Board);
 
-            // active color
-            var colorPart = parts[1];
+            // side to move
+            var sideToMovePart = parts[1];
 
-            if (colorPart == "w" || colorPart == "b")
+            if (sideToMovePart == "w" || sideToMovePart == "b")
             {
-                game.SideToMove = colorPart == "w" ? Side.White : Side.Black;
+                game.SideToMove = sideToMovePart == "w" ? Side.White : Side.Black;
             }
             else
             {
-                throw new InvalidDataException($"Invalid color to move segment: {fen}");
+                throw new InvalidDataException($"Invalid side to move segment: {fen}");
             }
 
             if (TryParseFenCastling(parts[2], out var rights))
@@ -125,6 +126,20 @@ namespace RV.Chess.Board
             game.Moves.Clear();
         }
 
+        private static PieceType PieceTypeFromChar(char t)
+        {
+            return t switch
+            {
+                'r' or 'R' => PieceType.Rook,
+                'n' or 'N' => PieceType.Knight,
+                'b' or 'B' => PieceType.Bishop,
+                'q' or 'Q' => PieceType.Queen,
+                'k' or 'K' => PieceType.King,
+                'p' or 'P' => PieceType.Pawn,
+                _ => PieceType.None,
+            };
+        }
+
         private static void FillBoard(string piecePlacementPart, Chessboard board)
         {
             // fen starts from the upper left square (index 56) and goes goes 56-63, then 48-55 etc
@@ -146,16 +161,15 @@ namespace RV.Chess.Board
                 }
                 else if (char.IsLetter(c))
                 {
-                    var type = Piece.GetTypeFromChar(c);
+                    var type = PieceTypeFromChar(c);
 
                     if (type == PieceType.None)
                     {
                         throw new InvalidDataException($"Bad piece placement: {piecePlacementPart}");
                     }
 
-                    var color = char.IsLower(c) ? Side.Black : Side.White;
-
-                    board.AddPiece(type, color, squareIdx);
+                    var side = char.IsLower(c) ? Side.Black : Side.White;
+                    board.AddPiece(type, side, squareIdx);
                     offset++;
                     rankSize++;
                 }

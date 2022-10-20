@@ -9,14 +9,18 @@ namespace RV.Chess.Board.Tests
         {
             var g = new Chessgame();
             g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 w - - 0 1");
-            var pieces = g.Board.GetAllPieces();
-            Assert.Equal(6, pieces.Count);
-            Assert.Equal(new Piece(PieceType.Pawn, Side.Black), g.Board.GetPieceAt("h8"));
-            Assert.Equal(new Piece(PieceType.Queen, Side.White), g.Board.GetPieceAt("b7"));
-            Assert.Equal(new Piece(PieceType.King, Side.Black), g.Board.GetPieceAt("e5"));
-            Assert.Equal(new Piece(PieceType.King, Side.White), g.Board.GetPieceAt("d4"));
-            Assert.Equal(new Piece(PieceType.Queen, Side.Black), g.Board.GetPieceAt("g2"));
-            Assert.Equal(new Piece(PieceType.Pawn, Side.White), g.Board.GetPieceAt("a1"));
+            Assert.Equal(PieceType.Pawn, g.Board.GetPieceTypeAt("h8"));
+            Assert.Equal(Side.Black, g.Board.GetPieceSideAt("h8"));
+            Assert.Equal(PieceType.Queen, g.Board.GetPieceTypeAt("b7"));
+            Assert.Equal(Side.White, g.Board.GetPieceSideAt("b7"));
+            Assert.Equal(PieceType.King, g.Board.GetPieceTypeAt("e5"));
+            Assert.Equal(Side.Black, g.Board.GetPieceSideAt("e5"));
+            Assert.Equal(PieceType.King, g.Board.GetPieceTypeAt("d4"));
+            Assert.Equal(Side.White, g.Board.GetPieceSideAt("d4"));
+            Assert.Equal(PieceType.Queen, g.Board.GetPieceTypeAt("g2"));
+            Assert.Equal(Side.Black, g.Board.GetPieceSideAt("g2"));
+            Assert.Equal(PieceType.Pawn, g.Board.GetPieceTypeAt("a1"));
+            Assert.Equal(Side.White, g.Board.GetPieceSideAt("a1"));
         }
 
         [Fact]
@@ -31,7 +35,7 @@ namespace RV.Chess.Board.Tests
         }
 
         [Fact]
-        public void Fen_ParsesColor()
+        public void Fen_ParsesSideToMove()
         {
             var g = new Chessgame();
             g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 b - - 0 1");

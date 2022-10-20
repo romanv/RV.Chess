@@ -34,41 +34,67 @@ namespace RV.Chess.Board
             { PieceType.Rook, 0x8100000000000081 },
         };
 
-        private readonly Dictionary<PieceType, Bitboard> _pieceBoards = new();
+        private ulong _bishops = DEFAULT_PIECE_BITBOARDS[PieceType.Bishop];
+        private ulong _kings = DEFAULT_PIECE_BITBOARDS[PieceType.King];
+        private ulong _knights = DEFAULT_PIECE_BITBOARDS[PieceType.Knight];
+        private ulong _pawns = DEFAULT_PIECE_BITBOARDS[PieceType.Pawn];
+        private ulong _queens = DEFAULT_PIECE_BITBOARDS[PieceType.Queen];
+        private ulong _rooks = DEFAULT_PIECE_BITBOARDS[PieceType.Rook];
 
-        private readonly Dictionary<Side, Dictionary<PieceType, Bitboard>> _pieceBoardsByColor = new();
+        private ulong _occupied = OCCUPIED;
+        private ulong _occupiedWhite = WHITE;
+        private ulong _occupiedBlack = BLACK;
 
-#pragma warning disable CS8618 // Fields are initialed inside the Reset method
-        public Chessboard()
-#pragma warning restore CS8618
-        {
-            Reset();
-        }
+        public Chessboard() {}
 
         public Chessboard(Chessboard boardToClone)
         {
-            OccupiedBoard = boardToClone.OccupiedBoard;
-            OccupiedWhiteBoard = boardToClone.OccupiedWhiteBoard;
-            OccupiedBlackBoard = boardToClone.OccupiedBlackBoard;
+            _occupied = boardToClone.OccupiedBoard;
+            _occupiedWhite = boardToClone.OccupiedWhiteBoard;
+            _occupiedBlack = boardToClone.OccupiedBlackBoard;
 
-            _pieceBoardsByColor[Side.White] = new();
-            _pieceBoardsByColor[Side.Black] = new();
-
-            foreach (var (type, board) in boardToClone.PieceBoards)
-            {
-                _pieceBoards[type] = new Bitboard(board.Board);
-                _pieceBoardsByColor[Side.White][type] = board & OccupiedWhiteBoard;
-                _pieceBoardsByColor[Side.Black][type] = board & OccupiedBlackBoard;
-            }
+            _bishops = boardToClone._bishops;
+            _kings = boardToClone._kings;
+            _knights = boardToClone._knights;
+            _pawns = boardToClone._pawns;
+            _queens = boardToClone._queens;
+            _rooks = boardToClone._rooks;
         }
 
-        public Bitboard OccupiedBlackBoard { get; private set; }
+        public ulong OccupiedBoard => _occupied;
 
-        public Bitboard OccupiedBoard { get; private set; }
+        public ulong OccupiedWhiteBoard => _occupiedWhite;
 
-        public Bitboard OccupiedWhiteBoard { get; private set; }
+        public ulong OccupiedBlackBoard => _occupiedBlack;
 
-        public ulong GetPieceBoard(PieceType type, Side color) => _pieceBoards[type].Board & OwnBlockers(color).Board;
+        public ulong GetPieceBoard(PieceType type, Side side)
+        {
+            ulong board = 0;
+
+            switch (type)
+            {
+                case PieceType.Bishop:
+                    board = _bishops;
+                    break;
+                case PieceType.King:
+                    board = _kings;
+                    break;
+                case PieceType.Knight:
+                    board = _knights;
+                    break;
+                case PieceType.Pawn:
+                    board = _pawns;
+                    break;
+                case PieceType.Queen:
+                    board = _queens;
+                    break;
+                case PieceType.Rook:
+                    board = _rooks;
+                    break;
+            }
+
+            return board & OwnBlockers(side);
+        }
 
         public static string IdxToSquare(int idx) => (idx >= 0 && idx < 64)
             ? SQUARES[idx]
@@ -78,27 +104,19 @@ namespace RV.Chess.Board
 
         public static int SquareToIdx(string square) => Array.IndexOf(SQUARES, square);
 
-        internal Bitboard OwnBlockers(Side sideToMove) => sideToMove == Side.White ? OccupiedWhiteBoard : OccupiedBlackBoard;
+        internal ulong OwnBlockers(Side sideToMove) => sideToMove == Side.White ? OccupiedWhiteBoard : OccupiedBlackBoard;
 
-        internal Bitboard EnemyBlockers(Side sideToMove) => sideToMove == Side.White ? OccupiedBlackBoard : OccupiedWhiteBoard;
+        internal ulong EnemyBlockers(Side sideToMove) => sideToMove == Side.White ? OccupiedBlackBoard : OccupiedWhiteBoard;
 
-        internal Dictionary<PieceType, Bitboard> PieceBoards => _pieceBoards;
+        internal ulong GetOccupiedBySide(Side side) => side == Side.White ? OccupiedWhiteBoard : OccupiedBlackBoard;
 
-        internal Bitboard GetPieceBoardByColor(Side color, PieceType type) => _pieceBoardsByColor[color][type];
-
-        internal Bitboard GetOccupiedByColor(Side color) => color == Side.White
-            ? OccupiedWhiteBoard
-            : OccupiedBlackBoard;
-
-        public void AddPiece(Piece piece, string square) => AddPiece(piece.Type, piece.Side, square);
-
-        public void AddPiece(PieceType type, Side color, string square)
+        public void AddPiece(PieceType type, Side side, string square)
         {
             var idx = SquareToIdx(square);
 
             if (idx >= 0)
             {
-                AddPiece(type, color, idx);
+                AddPiece(type, side, idx);
             }
             else
             {
@@ -106,9 +124,7 @@ namespace RV.Chess.Board
             }
         }
 
-        public void AddPiece(Piece piece, int square) => AddPiece(piece.Type, piece.Side, square);
-
-        public void AddPiece(PieceType type, Side color, int square)
+        public void AddPiece(PieceType type, Side side, int square)
         {
             if (square < 0 || square > 63)
             {
@@ -116,73 +132,72 @@ namespace RV.Chess.Board
             }
 
             RemovePieceAt(square);
+            _occupied = OccupiedBoard.SetAt(square);
 
-            OccupiedBoard.SetAt(square);
-            _pieceBoards[type].SetAt(square);
-            _pieceBoardsByColor[color][type].SetAt(square);
-
-            if (color == Side.White)
+            switch (type)
             {
-                OccupiedWhiteBoard.SetAt(square);
+                case PieceType.Bishop:
+                    _bishops = _bishops.SetAt(square);
+                    break;
+                case PieceType.King:
+                    _kings = _kings.SetAt(square);
+                    break;
+                case PieceType.Knight:
+                    _knights = _knights.SetAt(square);
+                    break;
+                case PieceType.Pawn:
+                    _pawns = _pawns.SetAt(square);
+                    break;
+                case PieceType.Queen:
+                    _queens = _queens.SetAt(square);
+                    break;
+                case PieceType.Rook:
+                    _rooks = _rooks.SetAt(square);
+                    break;
+            }
+
+            if (side == Side.White)
+            {
+                _occupiedWhite = _occupiedWhite.SetAt(square);
             }
             else
             {
-                OccupiedBlackBoard.SetAt(square);
+                _occupiedBlack = _occupiedBlack.SetAt(square);
             }
         }
 
         public void Clear()
         {
-            OccupiedBlackBoard.Clear();
-            OccupiedWhiteBoard.Clear();
-            OccupiedBoard.Clear();
-
-            foreach (var (type, _) in DEFAULT_PIECE_BITBOARDS)
-            {
-                _pieceBoards[type] = new Bitboard(0);
-                _pieceBoardsByColor[Side.White][type].Clear();
-                _pieceBoardsByColor[Side.Black][type].Clear();
-            }
+            _occupied = 0;
+            _occupiedWhite = 0;
+            _occupiedBlack = 0;
+            _bishops = 0;
+            _kings = 0;
+            _knights = 0;
+            _pawns = 0;
+            _queens = 0;
+            _rooks = 0;
         }
 
-        public List<Piece> GetAllPieces()
+        public int GetOwnKingSquare(Side ownSide)
+            => ownSide == Side.White ? GetKingSquare(Side.White) : GetKingSquare(Side.Black);
+
+        public int GetEnemyKingSquare(Side ownSide)
+            => ownSide == Side.White ? GetKingSquare(Side.Black) : GetKingSquare(Side.White);
+
+        public int GetKingSquare(Side side)
         {
-            var pieces = new List<Piece>();
-
-            for (var i = 0; i < 64; i++)
-            {
-                var piece = GetPieceAt(i);
-
-                if (piece.Type != PieceType.None)
-                {
-                    pieces.Add(piece);
-                }
-            }
-
-            return pieces;
-        }
-
-        public int GetOwnKingSquare(Side ownColor)
-            => ownColor == Side.White ? GetKingSquare(Side.White) : GetKingSquare(Side.Black);
-
-        public int GetEnemyKingSquare(Side ownColor)
-            => ownColor == Side.White ? GetKingSquare(Side.Black) : GetKingSquare(Side.White);
-
-        public int GetKingSquare(Side color)
-        {
-            var kingBb = _pieceBoards[PieceType.King].Board
-                & (color == Side.White ? OccupiedWhiteBoard.Board : OccupiedBlackBoard.Board);
-
+            var kingBb = _kings & (side == Side.White ? OccupiedWhiteBoard : OccupiedBlackBoard);
             return 63 - BitOperations.LeadingZeroCount(kingBb);
         }
 
-        public Piece GetPieceAt(string square)
+        public PieceType GetPieceTypeAt(string square)
         {
             var idx = SquareToIdx(square);
 
             if (idx >= 0)
             {
-                return GetPieceAt(idx);
+                return GetPieceTypeAt(idx);
             }
             else
             {
@@ -190,40 +205,43 @@ namespace RV.Chess.Board
             }
         }
 
-        public Piece GetPieceAt(int square)
+        public PieceType GetPieceTypeAt(int square)
         {
             Debug.Assert(square >= 0 && square <= 64);
 
-            // ugly, but faster then iterating trough dictionary keys
-            if (_pieceBoards[PieceType.Rook].OccupiedAt(square))
-            {
-                return new Piece(PieceType.Rook, OccupiedWhiteBoard.OccupiedAt(square) ? Side.White : Side.Black);
-            }
-            else if (_pieceBoards[PieceType.Knight].OccupiedAt(square))
-            {
-                return new Piece(PieceType.Knight, OccupiedWhiteBoard.OccupiedAt(square) ? Side.White : Side.Black);
-            }
-            else if (_pieceBoards[PieceType.Bishop].OccupiedAt(square))
-            {
-                return new Piece(PieceType.Bishop, OccupiedWhiteBoard.OccupiedAt(square) ? Side.White : Side.Black);
-            }
-            else if (_pieceBoards[PieceType.Queen].OccupiedAt(square))
-            {
-                return new Piece(PieceType.Queen, OccupiedWhiteBoard.OccupiedAt(square) ? Side.White : Side.Black);
-            }
-            else if (_pieceBoards[PieceType.King].OccupiedAt(square))
-            {
-                return new Piece(PieceType.King, OccupiedWhiteBoard.OccupiedAt(square) ? Side.White : Side.Black);
-            }
-            else if (_pieceBoards[PieceType.Pawn].OccupiedAt(square))
-            {
-                return new Piece(PieceType.Pawn, OccupiedWhiteBoard.OccupiedAt(square) ? Side.White : Side.Black);
-            }
-
-            return new Piece(PieceType.None, Side.White);
+            if (_pawns.OccupiedAt(square)) return PieceType.Pawn;
+            if (_knights.OccupiedAt(square)) return PieceType.Knight;
+            if (_bishops.OccupiedAt(square)) return PieceType.Bishop;
+            if (_rooks.OccupiedAt(square)) return PieceType.Rook;
+            if (_queens.OccupiedAt(square)) return PieceType.Queen;
+            if (_kings.OccupiedAt(square)) return PieceType.King;
+            return PieceType.None;
         }
 
-        public bool IsOccupied(int square) => OccupiedBoard.OccupiedAt(square);
+        public Side GetPieceSideAt(string square)
+        {
+            var idx = SquareToIdx(square);
+
+            if (idx >= 0)
+            {
+                return GetPieceSideAt(idx);
+            }
+            else
+            {
+                throw new InvalidDataException($"Invalid square: {square}");
+            }
+        }
+
+        public Side GetPieceSideAt(int square)
+        {
+            Debug.Assert(square >= 0 && square <= 64);
+
+            if (_occupiedWhite.OccupiedAt(square)) return Side.White;
+            if (_occupiedBlack.OccupiedAt(square)) return Side.Black;
+            return Side.None;
+        }
+
+        public bool IsOccupied(int square) => _occupied.OccupiedAt(square);
 
         public bool IsOccupied(string square)
         {
@@ -252,26 +270,22 @@ namespace RV.Chess.Board
                 for (var file = 0; file < 8; file++)
                 {
                     var isEmpty = true;
+                    var squareIdx = rank * 8 + file;
 
-                    foreach (var (type, board) in _pieceBoards)
+                    if (_occupied.OccupiedAt(squareIdx))
                     {
-                        var squareIdx = rank * 8 + file;
-                        if (board.OccupiedAt(squareIdx))
+                        var character = GetPieceTypeAt(squareIdx) switch
                         {
-                            var character = type switch
-                            {
-                                PieceType.Bishop => OccupiedWhiteBoard.OccupiedAt(squareIdx) ? "| B " : "| b ",
-                                PieceType.King => OccupiedWhiteBoard.OccupiedAt(squareIdx) ? "| K " : "| k ",
-                                PieceType.Knight => OccupiedWhiteBoard.OccupiedAt(squareIdx) ? "| N " : "| n ",
-                                PieceType.Pawn => OccupiedWhiteBoard.OccupiedAt(squareIdx) ? "| P " : "| p ",
-                                PieceType.Queen => OccupiedWhiteBoard.OccupiedAt(squareIdx) ? "| Q " : "| q ",
-                                PieceType.Rook => OccupiedWhiteBoard.OccupiedAt(squareIdx) ? "| R " : "| r ",
-                                _ => "",
-                            };
-                            sb.Append(character);
-                            isEmpty = false;
-                            break;
-                        }
+                            PieceType.Bishop => OccupiedWhiteBoard.OccupiedAt(squareIdx) ? "| B " : "| b ",
+                            PieceType.King => OccupiedWhiteBoard.OccupiedAt(squareIdx) ? "| K " : "| k ",
+                            PieceType.Knight => OccupiedWhiteBoard.OccupiedAt(squareIdx) ? "| N " : "| n ",
+                            PieceType.Pawn => OccupiedWhiteBoard.OccupiedAt(squareIdx) ? "| P " : "| p ",
+                            PieceType.Queen => OccupiedWhiteBoard.OccupiedAt(squareIdx) ? "| Q " : "| q ",
+                            PieceType.Rook => OccupiedWhiteBoard.OccupiedAt(squareIdx) ? "| R " : "| r ",
+                            _ => "",
+                        };
+                        sb.Append(character);
+                        isEmpty = false;
                     }
 
                     if (isEmpty)
@@ -313,29 +327,51 @@ namespace RV.Chess.Board
 
         public void RemovePieceAt(int square)
         {
-            if (!IsOccupied(square))
+            if (!_occupied.OccupiedAt(square))
             {
                 return;
             }
 
-            var (type, color) = GetPieceAt(square);
+            var type = GetPieceTypeAt(square);
 
             if (type == PieceType.None)
             {
                 return;
             }
 
-            OccupiedBoard.RemoveAt(square);
-            _pieceBoards[type].RemoveAt(square);
-            _pieceBoardsByColor[color][type].RemoveAt(square);
+            var side = GetPieceSideAt(square);
 
-            if (color == Side.White)
+            switch (type)
             {
-                OccupiedWhiteBoard.RemoveAt(square);
+                case PieceType.Bishop:
+                    _bishops = _bishops.RemoveAt(square);
+                    break;
+                case PieceType.King:
+                    _kings = _kings.RemoveAt(square);
+                    break;
+                case PieceType.Knight:
+                    _knights = _knights.RemoveAt(square);
+                    break;
+                case PieceType.Pawn:
+                    _pawns = _pawns.RemoveAt(square);
+                    break;
+                case PieceType.Queen:
+                    _queens = _queens.RemoveAt(square);
+                    break;
+                case PieceType.Rook:
+                    _rooks = _rooks.RemoveAt(square);
+                    break;
+            }
+
+            _occupied = _occupied.RemoveAt(square);
+
+            if (side == Side.White)
+            {
+                _occupiedWhite = _occupiedWhite.RemoveAt(square);
             }
             else
             {
-                OccupiedBlackBoard.RemoveAt(square);
+                _occupiedBlack = _occupiedBlack.RemoveAt(square);
             }
         }
 
@@ -349,19 +385,16 @@ namespace RV.Chess.Board
 
         internal void Reset()
         {
-            OccupiedBlackBoard = new Bitboard(BLACK);
-            OccupiedWhiteBoard = new Bitboard(WHITE);
-            OccupiedBoard = new Bitboard(OCCUPIED);
+            _occupied = OCCUPIED;
+            _occupiedWhite = WHITE;
+            _occupiedBlack = BLACK;
 
-            _pieceBoardsByColor[Side.White] = new();
-            _pieceBoardsByColor[Side.Black] = new();
-
-            foreach (var (type, bitboard) in DEFAULT_PIECE_BITBOARDS)
-            {
-                _pieceBoards[type] = new Bitboard(bitboard);
-                _pieceBoardsByColor[Side.White][type] = _pieceBoards[type] & OccupiedWhiteBoard;
-                _pieceBoardsByColor[Side.Black][type] = _pieceBoards[type] & OccupiedBlackBoard;
-            }
+            _bishops = DEFAULT_PIECE_BITBOARDS[PieceType.Bishop];
+            _kings = DEFAULT_PIECE_BITBOARDS[PieceType.King];
+            _knights = DEFAULT_PIECE_BITBOARDS[PieceType.Knight];
+            _pawns = DEFAULT_PIECE_BITBOARDS[PieceType.Pawn];
+            _queens = DEFAULT_PIECE_BITBOARDS[PieceType.Queen];
+            _rooks = DEFAULT_PIECE_BITBOARDS[PieceType.Rook];
         }
     }
 }

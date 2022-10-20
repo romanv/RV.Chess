@@ -94,13 +94,13 @@ namespace RV.Chess.Board
             MakeMoveOnBoard(matchingLegalMove);
         }
 
-        private void UpdateEnPassantSquare(Piece movingPiece, Move move)
+        private void UpdateEnPassantSquare(Side side, Move move)
         {
-            if (movingPiece.Side == Side.White && move.SourceRank == 2 && move.TargetRank == 4)
+            if (side == Side.White && move.SourceRank == 2 && move.TargetRank == 4)
             {
                 EnPassantSquareIdx = move.FromIdx + 8;
             }
-            else if (movingPiece.Side == Side.Black && move.SourceRank == 7 && move.TargetRank == 5)
+            else if (side == Side.Black && move.SourceRank == 7 && move.TargetRank == 5)
             {
                 EnPassantSquareIdx = move.FromIdx - 8;
             }
@@ -110,23 +110,29 @@ namespace RV.Chess.Board
             }
         }
 
-        private void MakeCastlingMove(Piece castlingKing, Move move)
+        private void MakeCastlingMove(Move move)
         {
-            var rookPiece = _board.GetPieceAt(move.CastlingRookSourceSquareIdx);
+            if (_board.GetPieceTypeAt(move.CastlingRookSourceSquareIdx) != PieceType.Rook)
+            {
+                throw new Exception($"Invalid castling move in position {Fen} (no rook at square #{move.CastlingRookSourceSquareIdx})");
+            }
+
+            var side = _board.GetPieceSideAt(move.FromIdx);
             _board.RemovePieceAt(move.CastlingRookSourceSquareIdx);
-            _board.AddPiece(rookPiece, move.CastlingRookTargetSquareIdx);
+            _board.AddPiece(PieceType.Rook, side, move.CastlingRookTargetSquareIdx);
             _board.RemovePieceAt(move.FromIdx);
-            _board.AddPiece(castlingKing, move.ToIdx);
-            CastlingRights.Remove(castlingKing.Side);
+            _board.AddPiece(PieceType.King, side, move.ToIdx);
+            CastlingRights.RemoveForSide(side);
         }
 
         private void MakeMoveOnBoard(Move move)
         {
-            var movingPiece = _board.GetPieceAt(move.FromIdx);
+            var pieceType = _board.GetPieceTypeAt(move.FromIdx);
+            var pieceSide = _board.GetPieceSideAt(move.FromIdx);
 
-            if (movingPiece.Type == PieceType.Pawn)
+            if (pieceType == PieceType.Pawn)
             {
-                UpdateEnPassantSquare(movingPiece, move);
+                UpdateEnPassantSquare(pieceSide, move);
 
                 // special case, because capture target wouldn't be overwritten by the capturer in case of en passant
                 if (move.IsEnPassant)
@@ -141,22 +147,22 @@ namespace RV.Chess.Board
 
             if (move.IsCastling)
             {
-                MakeCastlingMove(movingPiece, move);
+                MakeCastlingMove(move);
             }
             else
             {
                 // remove castling rights if king or rook moves
-                if (movingPiece.Type == PieceType.King)
+                if (pieceType == PieceType.King)
                 {
-                    CastlingRights.Remove(movingPiece.Side);
+                    CastlingRights.RemoveForSide(pieceSide);
                 }
-                else if (movingPiece.Type == PieceType.Rook)
+                else if (pieceType == PieceType.Rook)
                 {
                     CastlingRights.RemoveFromRookMove(move.FromIdx);
                 }
 
                 // remove castling rights if rook is captured
-                if (move.IsCapture && _board.GetPieceAt(move.ToIdx).Type == PieceType.Rook)
+                if (move.IsCapture && _board.GetPieceTypeAt(move.ToIdx) == PieceType.Rook)
                 {
                     CastlingRights.RemoveFromRookMove(move.ToIdx);
                 }
@@ -166,14 +172,14 @@ namespace RV.Chess.Board
 
             if (move.PromoteTo != PieceType.None)
             {
-                _board.AddPiece(new Piece(move.PromoteTo, movingPiece.Side), move.ToIdx);
+                _board.AddPiece(move.PromoteTo, pieceSide, move.ToIdx);
             }
             else
             {
-                _board.AddPiece(movingPiece, move.ToIdx);
+                _board.AddPiece(pieceType, pieceSide, move.ToIdx);
             }
 
-            if (movingPiece.Type == PieceType.Pawn || move.IsCapture)
+            if (pieceType == PieceType.Pawn || move.IsCapture)
             {
                 HalfMoveClock = 0;
             }
@@ -227,7 +233,7 @@ namespace RV.Chess.Board
                     }
                 }
 
-                var evasions = legalMoves.Where(m => m.Piece.Type == PieceType.King
+                var evasions = legalMoves.Where(m => m.PieceType == PieceType.King
                     && !Movement.IsSquareAttacked(board, m.ToIdx, sideToMove.Opposite())
                     && !defensiveMoves.Contains(m));
 
@@ -257,9 +263,9 @@ namespace RV.Chess.Board
         {
             // find, which checkers are sliders and can be blocked
             var attackerSide = sideToMove.Opposite();
-            var attackerRooks = board.GetPieceBoardByColor(attackerSide, PieceType.Rook).Board;
-            var attackerBishops = board.GetPieceBoardByColor(attackerSide, PieceType.Bishop).Board;
-            var attackerQueens = board.GetPieceBoardByColor(attackerSide, PieceType.Queen).Board;
+            var attackerRooks = board.GetPieceBoard(PieceType.Rook, attackerSide);
+            var attackerBishops = board.GetPieceBoard(PieceType.Bishop, attackerSide);
+            var attackerQueens = board.GetPieceBoard(PieceType.Queen, attackerSide);
             var sliders = (attackerRooks | attackerBishops | attackerQueens) & checkers;
 
             if (sliders > 0)
@@ -279,41 +285,41 @@ namespace RV.Chess.Board
         private IList<Move> GenerateAllMoves(Chessboard board, Side sideToMove, bool kingInCheck)
         {
             var allMoves = new List<Move>();
-            var piecesToMove = board.OwnBlockers(sideToMove).Board;
-            var ownBlockers = board.OwnBlockers(sideToMove).Board;
+            var piecesToMove = board.OwnBlockers(sideToMove);
+            var ownBlockers = board.OwnBlockers(sideToMove);
             var enemyKingSquare = board.GetKingSquare(sideToMove.Opposite());
 
             while (piecesToMove > 0)
             {
                 var sourceSquare = piecesToMove.LastSignificantBitIndex();
-                var piece = board.GetPieceAt(sourceSquare);
+                var pieceType = board.GetPieceTypeAt(sourceSquare);
 
-                if (piece.Type is PieceType.Pawn)
+                if (pieceType is PieceType.Pawn)
                 {
                     var moves = Movement.GetPawnMovesFrom(board, sourceSquare, ownBlockers, EnPassantSquareIdx);
                     allMoves.AddRange(moves);
                 }
-                else if (piece.Type is PieceType.Rook)
+                else if (pieceType is PieceType.Rook)
                 {
                     var moves = Movement.GetRookMovesFrom(board, sourceSquare, ownBlockers, enemyKingSquare);
                     allMoves.AddRange(moves);
                 }
-                else if (piece.Type is PieceType.Bishop)
+                else if (pieceType is PieceType.Bishop)
                 {
                     var moves = Movement.GetBishopMovesFrom(board, sourceSquare, ownBlockers, enemyKingSquare);
                     allMoves.AddRange(moves);
                 }
-                else if (piece.Type is PieceType.Queen)
+                else if (pieceType is PieceType.Queen)
                 {
                     var moves = Movement.GetQueenMovesFrom(board, sourceSquare, ownBlockers, enemyKingSquare);
                     allMoves.AddRange(moves);
                 }
-                else if (piece.Type is PieceType.Knight)
+                else if (pieceType is PieceType.Knight)
                 {
                     var moves = Movement.GetKnightMovesFrom(board, sourceSquare, ownBlockers, enemyKingSquare);
                     allMoves.AddRange(moves);
                 }
-                else if (piece.Type is PieceType.King)
+                else if (pieceType is PieceType.King)
                 {
                     var moves = Movement.GetKingMovesFrom(board, sourceSquare, ownBlockers, kingInCheck, CastlingRights);
                     allMoves.AddRange(moves);
@@ -333,7 +339,7 @@ namespace RV.Chess.Board
             {
                 var isLegal = false;
 
-                if (move.Piece.Type == PieceType.King)
+                if (move.PieceType == PieceType.King)
                 {
                     if (Movement.IsKingMoveSafe(board, move, sideToMove))
                     {
@@ -342,11 +348,10 @@ namespace RV.Chess.Board
                 }
                 else if (move.IsEnPassant)
                 {
-                    var movingPiece = board.GetPieceAt(move.FromIdx);
-                    var captureTarget = board.GetPieceAt(move.EnPassantCaptureTarget);
+                    var captureTargetType = board.GetPieceTypeAt(move.EnPassantCaptureTarget);
                     board.RemovePieceAt(move.FromIdx);
                     board.RemovePieceAt(move.EnPassantCaptureTarget);
-                    board.AddPiece(movingPiece, move.ToIdx);
+                    board.AddPiece(PieceType.Pawn, sideToMove, move.ToIdx);
 
                     if (!Movement.IsSquareAttacked(board, board.GetKingSquare(sideToMove), sideToMove.Opposite()))
                     {
@@ -354,8 +359,8 @@ namespace RV.Chess.Board
                     }
 
                     board.RemovePieceAt(move.ToIdx);
-                    board.AddPiece(captureTarget, move.EnPassantCaptureTarget);
-                    board.AddPiece(movingPiece, move.FromIdx);
+                    board.AddPiece(captureTargetType, sideToMove.Opposite(), move.EnPassantCaptureTarget);
+                    board.AddPiece(PieceType.Pawn, sideToMove, move.FromIdx);
                 }
                 else if ((move.FromMask & pinned) == 0)
                 {
@@ -370,27 +375,25 @@ namespace RV.Chess.Board
                 if (isLegal && !move.IsCheck)
                 {
                     // find discovered checks separately by making a move and checking if it is legit, then rolling it back
-                    var movingPiece = board.GetPieceAt(move.FromIdx);
+                    var movingPieceType = board.GetPieceTypeAt(move.FromIdx);
                     var captureTargetSquare = move.IsEnPassant ? move.EnPassantCaptureTarget : move.ToIdx;
-                    var captureTarget = board.GetPieceAt(captureTargetSquare);
+                    var captureTargetType = board.GetPieceTypeAt(captureTargetSquare);
                     var oldEnPassant = EnPassantSquareIdx;
-                    var castlingRook = move.IsCastling ? board.GetPieceAt(move.CastlingRookSourceSquareIdx) : null;
-
                     board.RemovePieceAt(move.FromIdx);
 
-                    if (captureTarget.Type != PieceType.None)
+                    if (captureTargetType != PieceType.None)
                     {
                         board.RemovePieceAt(captureTargetSquare);
                     }
 
-                    if (castlingRook != null)
+                    if (move.IsCastling)
                     {
                         board.RemovePieceAt(move.CastlingRookSourceSquareIdx);
-                        board.AddPiece(castlingRook, move.CastlingRookTargetSquareIdx);
+                        board.AddPiece(PieceType.Rook, sideToMove, move.CastlingRookTargetSquareIdx);
                     }
 
-                    var pieceTypeAfterMove = move.PromoteTo != PieceType.None ? move.PromoteTo : movingPiece.Type;
-                    board.AddPiece(pieceTypeAfterMove, movingPiece.Side, move.ToIdx);
+                    var pieceTypeAfterMove = move.PromoteTo != PieceType.None ? move.PromoteTo : movingPieceType;
+                    board.AddPiece(pieceTypeAfterMove, sideToMove, move.ToIdx);
 
                     var enemyKingAttackedAfterMove =
                         Movement.IsSquareAttacked(board, board.GetEnemyKingSquare(sideToMove), sideToMove);
@@ -404,7 +407,7 @@ namespace RV.Chess.Board
                         // check if opposing side has any legal moves after we make the check
                         var nextPlyBoard = new Chessboard(board);
 
-                        if (movingPiece.Type == PieceType.Pawn && Math.Abs(move.FromIdx - move.ToIdx) == 16)
+                        if (movingPieceType == PieceType.Pawn && Math.Abs(move.FromIdx - move.ToIdx) == 16)
                         {
                             EnPassantSquareIdx = move.ToIdx > move.FromIdx
                                 ? move.FromIdx + 8
@@ -426,17 +429,17 @@ namespace RV.Chess.Board
 
                     // undo the tested move
                     board.RemovePieceAt(move.ToIdx);
-                    board.AddPiece(movingPiece, move.FromIdx);
+                    board.AddPiece(movingPieceType, sideToMove, move.FromIdx);
 
-                    if (castlingRook != null)
+                    if (move.IsCastling)
                     {
                         board.RemovePieceAt(move.CastlingRookTargetSquareIdx);
-                        board.AddPiece(castlingRook, move.CastlingRookSourceSquareIdx);
+                        board.AddPiece(PieceType.Rook, sideToMove, move.CastlingRookSourceSquareIdx);
                     }
 
-                    if (captureTarget.Type != PieceType.None)
+                    if (captureTargetType != PieceType.None)
                     {
-                        board.AddPiece(captureTarget, captureTargetSquare);
+                        board.AddPiece(captureTargetType, sideToMove.Opposite(), captureTargetSquare);
                     }
 
                     if (ownKingExposedAfterMove)

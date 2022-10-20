@@ -4,6 +4,7 @@
     {
         Black,
         White,
+        None,
     }
 
     public static class SideExtensions

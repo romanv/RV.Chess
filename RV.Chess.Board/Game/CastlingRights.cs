@@ -45,7 +45,7 @@ namespace RV.Chess.Board
             }
         }
 
-        public void Remove(Side side)
+        public void RemoveForSide(Side side)
         {
             if (side == Side.White)
             {

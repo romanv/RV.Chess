@@ -31,6 +31,18 @@ namespace RV.Chess.Board
             return 63 - BitOperations.LeadingZeroCount(value);
         }
 
+        internal static ulong SetAt(this ulong value, int bitIdx)
+        {
+            return value | (1UL << bitIdx);
+        }
+
+        internal static ulong RemoveAt(this ulong value, int bitIdx)
+        {
+            return value & ~(1UL << bitIdx);
+        }
+
+        internal static bool OccupiedAt(this ulong value, int square) => (value & (1UL << square)) != 0;
+
         private static ulong SwapBits(ulong num, ulong mask, int shift)
         {
             var q = ((num >> shift) ^ num) & mask;
