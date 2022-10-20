@@ -24,22 +24,23 @@ namespace RV.Chess.Board
         private static int HashPieces(Chessboard board)
         {
             var hash = 0;
-            var pieces = board.OccupiedBoard.Board;
+            var pieces = board.OccupiedBoard;
 
             while (pieces > 0)
             {
                 var sourceSquare = pieces.LastSignificantBitIndex();
-                var piece = board.GetPieceAt(sourceSquare);
-                hash ^= HashPiece(sourceSquare, piece);
+                var type = board.GetPieceTypeAt(sourceSquare);
+                var side = board.GetPieceSideAt(sourceSquare);
+                hash ^= HashPiece(sourceSquare, type, side);
                 pieces &= ~(1UL << sourceSquare);
             }
 
             return hash;
         }
 
-        private static int HashPiece(int square, Piece piece)
+        private static int HashPiece(int square, PieceType type, Side side)
         {
-            var index = PieceIndices[piece.Type] * 2 + (piece.Side == Side.White ? 1 : 0);
+            var index = PieceIndices[type] * 2 + (side == Side.White ? 1 : 0);
             return POLYGLOT[64 * index + square];
         }
 
