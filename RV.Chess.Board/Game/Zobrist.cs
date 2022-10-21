@@ -15,7 +15,6 @@ namespace RV.Chess.Board
             { PieceType.King, 5 },
         };
 
-
         public static int ZobristHash(this Chessgame game)
         {
             return HashPieces(game.Board) ^ HashCastling(game.CastlingRights) ^ HashTurn(game) ^ HashEnPassant(game);
