@@ -3,8 +3,9 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
-# Separate project for perf testing
+# Separate projects for testing
 RV.Chess.PerfomanceTests/
+RV.Chess.CBReader.Console/
 
 # User-specific files
 *.rsuser
