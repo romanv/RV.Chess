@@ -63,7 +63,10 @@ namespace RV.Chess.Board
 
             if (matchingLegalMove == null)
             {
-                throw new InvalidOperationException($"Move {san} is not possible in position {Fen}");
+                throw new InvalidMoveException($"Invalid move {san}")
+                {
+                    Position = Fen,
+                };
             }
 
             MakeMoveOnBoard(matchingLegalMove);
