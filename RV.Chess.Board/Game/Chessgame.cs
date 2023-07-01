@@ -95,6 +95,19 @@ namespace RV.Chess.Board
             MakeMoveOnBoard(matchingLegalMove);
         }
 
+        public void MakeMove(int fromIdx, int toIdx)
+        {
+            var matchingLegalMove = GenerateMoves()
+                .FirstOrDefault(m => m.FromIdx == fromIdx && m.ToIdx == toIdx);
+
+            if (matchingLegalMove == null)
+            {
+                throw new InvalidMoveException(Chessboard.IdxToSquare(fromIdx), Chessboard.IdxToSquare(toIdx), Fen);
+            }
+
+            MakeMoveOnBoard(matchingLegalMove);
+        }
+
         private void UpdateEnPassantSquare(Side side, Move move)
         {
             if (side == Side.White && move.SourceRank == 2 && move.TargetRank == 4)
