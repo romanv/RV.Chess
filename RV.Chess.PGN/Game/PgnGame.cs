@@ -80,7 +80,7 @@ namespace RV.Chess.PGN
                         result.Add(new PgnTerminatorNode(t.Result));
                         break;
                     case CommentSyntax c:
-                        result.Add(new PgnCommentNode(c.Value));
+                        result.Add(new PgnCommentNode(c.Value.Trim()));
                         break;
                     default:
                         throw new InvalidDataException($"Invalid node type: {node.GetType()}");
