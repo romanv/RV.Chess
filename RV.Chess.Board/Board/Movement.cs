@@ -456,17 +456,17 @@
             return horizontal | vertical;
         }
 
-        private static IList<Move> GetMovesFromPrecalculatedAttacks(int sourceSquare, PieceType pieceType, Side side,
+        private static IList<Move> GetMovesFromPrecalculatedAttacks(int sourceSquareIdx, PieceType pieceType, Side side,
             ulong occupied, ulong ownBlockers, ulong[] attacks, int enemyKingSquare)
         {
-            var targetSquares = attacks[sourceSquare] & ~ownBlockers;
-            var result = GenerateMovesFromBitboard(sourceSquare, pieceType, side, occupied,
+            var targetSquares = attacks[sourceSquareIdx] & ~ownBlockers;
+            var result = GenerateMovesFromBitboard(sourceSquareIdx, pieceType, side, occupied,
                 ownBlockers, targetSquares, enemyKingSquare);
 
             return result;
         }
 
-        private static IList<Move> GenerateMovesFromBitboard(int sourceSquare, PieceType pieceType, Side side,
+        private static IList<Move> GenerateMovesFromBitboard(int sourceSquareIdx, PieceType pieceType, Side side,
             ulong occupied, ulong ownBlockers, ulong targetSquares, int enemyKingSquare)
         {
             var result = new List<Move>();
@@ -476,7 +476,7 @@
                 var targetSquareIdx = targetSquares.LastSignificantBitIndex();
                 var isCapture = occupied.OccupiedAt(targetSquareIdx) && !ownBlockers.OccupiedAt(targetSquareIdx);
                 var isCheck = targetSquareIdx == enemyKingSquare;
-                result.Add(new Move(pieceType, side, sourceSquare, targetSquareIdx, isCapture, isCheck));
+                result.Add(new Move(pieceType, side, sourceSquareIdx, targetSquareIdx, isCapture, isCheck));
                 targetSquares &= ~(1UL << targetSquareIdx);
             }
 
