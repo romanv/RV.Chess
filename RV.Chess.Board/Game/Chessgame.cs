@@ -57,7 +57,7 @@ namespace RV.Chess.Board
 
         public string Fen => FEN.BuildFEN(this);
 
-        public void MakeMove(string san)
+        public Move MakeMove(string san)
         {
             var matchingLegalMove = GenerateMoves().FirstOrDefault(m => m.San == san);
 
@@ -70,9 +70,11 @@ namespace RV.Chess.Board
             }
 
             MakeMoveOnBoard(matchingLegalMove);
+
+            return matchingLegalMove;
         }
 
-        public void MakeMove(string from, string to)
+        public Move MakeMove(string from, string to)
         {
             var matchingLegalMove = GenerateMoves()
                 .FirstOrDefault(m => m.From == from && m.To == to);
@@ -83,9 +85,11 @@ namespace RV.Chess.Board
             }
 
             MakeMoveOnBoard(matchingLegalMove);
+
+            return matchingLegalMove;
         }
 
-        public void MakeMove(Move move)
+        public Move MakeMove(Move move)
         {
             var matchingLegalMove = GenerateMoves()
                 .FirstOrDefault(m => m.From == move.From && m.To == move.To && m.PromoteTo == move.PromoteTo);
@@ -96,9 +100,11 @@ namespace RV.Chess.Board
             }
 
             MakeMoveOnBoard(matchingLegalMove);
+
+            return matchingLegalMove;
         }
 
-        public void MakeMove(int fromIdx, int toIdx)
+        public Move MakeMove(int fromIdx, int toIdx)
         {
             var matchingLegalMove = GenerateMoves()
                 .FirstOrDefault(m => m.FromIdx == fromIdx && m.ToIdx == toIdx);
@@ -109,6 +115,8 @@ namespace RV.Chess.Board
             }
 
             MakeMoveOnBoard(matchingLegalMove);
+
+            return matchingLegalMove;
         }
 
         private void UpdateEnPassantSquare(Side side, Move move)
