@@ -36,6 +36,30 @@ namespace RV.Chess.PGN
             }
         }
 
+        public static IEnumerable<PgnGame> ParseString(string data)
+        {
+            var previousPart = string.Empty;
+
+            var start = 0;
+            while (start < data.Length)
+            {
+                var sb = new StringBuilder(previousPart);
+                var end = Math.Min(MAX_BUFFER, data.Length - start);
+                sb.Append(data.AsSpan(start, end - start));
+                var chunk = sb.ToString();
+                // split the chunk into game fragments
+                var (games, remainder) = GetCompleteGameChunks(chunk);
+
+                foreach (var gameText in games)
+                {
+                    yield return PgnGame.FromString(gameText);
+                }
+
+                previousPart = remainder;
+                start += MAX_BUFFER;
+            }
+        }
+
         private static (List<string>, string) GetCompleteGameChunks(string text)
         {
             var games = new List<string>();

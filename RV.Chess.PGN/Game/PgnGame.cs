@@ -4,6 +4,15 @@ namespace RV.Chess.PGN
 {
     public class PgnGame : PgnMovetextNode
     {
+        public PgnGame(IEnumerable<PgnNode> moves) : base(moves)
+        {
+        }
+
+        private PgnGame(Dictionary<string, string> tags, List<PgnNode> moves) : base(moves)
+        {
+            Tags = tags;
+        }
+
         public static PgnGame FromString(string pgn)
         {
             var lexer = new Lexer(pgn);
@@ -46,11 +55,6 @@ namespace RV.Chess.PGN
         public override PgnNodeKind Kind => PgnNodeKind.Game;
 
         public Dictionary<string, string> Tags { get; private set; } = new Dictionary<string, string>();
-
-        private PgnGame(Dictionary<string, string> tags, List<PgnNode> moves) : base(moves)
-        {
-            Tags = tags;
-        }
 
         private static List<PgnNode> ParseMoveSection(IEnumerable<SyntaxNode> nodes,
             int startingMoveNumber = 1,
