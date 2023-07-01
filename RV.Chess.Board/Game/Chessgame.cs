@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using RV.Chess.Board.Utils;
 
 namespace RV.Chess.Board
 {
@@ -75,7 +76,7 @@ namespace RV.Chess.Board
 
             if (matchingLegalMove == null)
             {
-                throw new InvalidOperationException($"Move {from}{to} is not possible in position {Fen}");
+                throw new InvalidMoveException(from, to, Fen);
             }
 
             MakeMoveOnBoard(matchingLegalMove);
@@ -88,7 +89,7 @@ namespace RV.Chess.Board
 
             if (matchingLegalMove == null)
             {
-                throw new InvalidOperationException($"Move {move.San} is not possible in position {Fen}");
+                throw new InvalidMoveException(move.From, move.To, Fen);
             }
 
             MakeMoveOnBoard(matchingLegalMove);
