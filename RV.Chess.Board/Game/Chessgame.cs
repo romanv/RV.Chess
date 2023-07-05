@@ -55,6 +55,26 @@ namespace RV.Chess.Board
             FEN.PutFENDataIntoChessgame(this, fen);
         }
 
+        public void SetSide(Side side)
+        {
+            SideToMove = side;
+        }
+
+        public void SetMoveNo(int moveNo)
+        {
+            CurrentMoveNumber = moveNo;
+        }
+
+        public void SetEnPassant(int squareIdx)
+        {
+            EnPassantSquareIdx = squareIdx;
+        }
+
+        public void SetCastling(CastlingRights rights)
+        {
+            CastlingRights = rights;
+        }
+
         public string Fen => FEN.BuildFEN(this);
 
         public Move MakeMove(string san)
