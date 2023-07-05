@@ -77,6 +77,16 @@ namespace RV.Chess.Board
 
         public string Fen => FEN.BuildFEN(this);
 
+        public void MakeNullMove()
+        {
+            if (SideToMove == Side.Black)
+            {
+                CurrentMoveNumber++;
+            }
+
+            SideToMove = SideToMove.Opposite();
+        }
+
         public Move MakeMove(string san)
         {
             var matchingLegalMove = GenerateMoves().FirstOrDefault(m => m.San == san);
