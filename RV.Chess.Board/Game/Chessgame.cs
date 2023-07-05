@@ -7,6 +7,9 @@ namespace RV.Chess.Board
     public class Chessgame
     {
         private readonly Chessboard _board = new();
+        private readonly StaticStack<int> _halfMoveClocks = new(300);
+        private readonly StaticStack<CastlingDirection> _castlingRights = new(4);
+        private readonly StaticStack<PieceType> _captures = new(128);
 
         public Chessgame()
         {
@@ -32,6 +35,9 @@ namespace RV.Chess.Board
             _board.Reset();
             CurrentMoveNumber = 1;
             HalfMoveClock = 0;
+            _halfMoveClocks.Clear();
+            _castlingRights.Clear();
+            _captures.Clear();
             SideToMove = Side.White;
             CastlingRights = CastlingRights.All;
             EnPassantSquareIdx = -1;
@@ -149,6 +155,91 @@ namespace RV.Chess.Board
             return matchingLegalMove;
         }
 
+        public Move MakeUncheckedMove(int fromIdx, int toIdx, PieceType promoteTo = PieceType.Queen)
+        {
+            var matchingMoves = GenerateAllMoves(_board, SideToMove, false)
+                .Where(m => m.FromIdx == fromIdx && m.ToIdx == toIdx)
+                .ToList();
+            var pinned = Movement.GetPinnedPieces(_board, SideToMove);
+            var legalMoves = RemoveIllegalMoves(_board, SideToMove, matchingMoves, pinned, false);
+            SanGenerator.Generate(legalMoves);
+
+            if (legalMoves.Count == 1)
+            {
+                MakeMoveOnBoard(legalMoves[0]);
+                return legalMoves[0];
+            }
+            else
+            {
+                var matchingPromotion = legalMoves.FirstOrDefault(m => m.PromoteTo == promoteTo);
+
+                if (matchingPromotion != null)
+                {
+                    MakeMoveOnBoard(matchingPromotion);
+                    return matchingPromotion;
+                }
+            }
+
+            throw new InvalidMoveException(Chessboard.IdxToSquare(fromIdx), Chessboard.IdxToSquare(toIdx), Fen);
+        }
+
+        public void UndoLastMove()
+        {
+            if (!Moves.Any())
+            {
+                return;
+            }
+
+            Move last = Moves.Last();
+
+            if (last.Side == Side.Black)
+            {
+                CurrentMoveNumber--;
+            }
+
+            if (_halfMoveClocks.Count > 0)
+            {
+                HalfMoveClock = _halfMoveClocks.Pop();
+            }
+            else
+            {
+                HalfMoveClock = 0;
+            }
+
+            if (last.IsCastling)
+            {
+                CastlingRights.Set(_castlingRights.Pop());
+                _board.RemovePieceAt(last.CastlingRookTargetSquareIdx);
+                _board.AddPiece(PieceType.Rook, last.Side, last.CastlingRookSourceSquareIdx);
+                _board.RemovePieceAt(last.ToIdx);
+                _board.AddPiece(PieceType.King, last.Side, last.FromIdx);
+            }
+            else if (last.IsEnPassant)
+            {
+                _board.AddPiece(_captures.Pop(), last.Side.Opposite(), last.EnPassantCaptureTarget);
+                _board.RemovePieceAt(last.ToIdx);
+                _board.AddPiece(PieceType.Pawn, last.Side, last.FromIdx);
+                EnPassantSquareIdx = last.ToIdx;
+            }
+            else
+            {
+                if (last.IsCapture)
+                {
+                    _board.AddPiece(_captures.Pop(), last.Side.Opposite(), last.ToIdx);
+                }
+                else
+                {
+                    _board.RemovePieceAt(last.ToIdx);
+                }
+
+                PieceType returnPiece = last.PromoteTo != PieceType.None ? PieceType.Pawn : last.PieceType;
+                _board.AddPiece(returnPiece, last.Side, last.FromIdx);
+            }
+
+            SideToMove = SideToMove.Opposite();
+            Moves.RemoveAt(Moves.Count - 1);
+        }
+
         private void UpdateEnPassantSquare(Side side, Move move)
         {
             if (side == Side.White && move.SourceRank == 2 && move.TargetRank == 4)
@@ -177,6 +268,7 @@ namespace RV.Chess.Board
             _board.AddPiece(PieceType.Rook, side, move.CastlingRookTargetSquareIdx);
             _board.RemovePieceAt(move.FromIdx);
             _board.AddPiece(PieceType.King, side, move.ToIdx);
+            _castlingRights.Push(CastlingRights.Rights);
             CastlingRights.RemoveForSide(side);
         }
 
@@ -217,9 +309,21 @@ namespace RV.Chess.Board
                 }
 
                 // remove castling rights if rook is captured
-                if (move.IsCapture && _board.GetPieceTypeAt(move.ToIdx) == PieceType.Rook)
+                if (move.IsCapture)
                 {
-                    CastlingRights.RemoveFromRookMove(move.ToIdx);
+                    if (move.IsEnPassant)
+                    {
+                        _captures.Push(PieceType.Pawn);
+                    }
+                    else
+                    {
+                        _captures.Push(_board.GetPieceTypeAt(move.ToIdx));
+                    }
+
+                    if (_board.GetPieceTypeAt(move.ToIdx) == PieceType.Rook)
+                    {
+                        CastlingRights.RemoveFromRookMove(move.ToIdx);
+                    }
                 }
 
                 _board.RemovePieceAt(move.FromIdx);
@@ -233,6 +337,8 @@ namespace RV.Chess.Board
             {
                 _board.AddPiece(pieceType, pieceSide, move.ToIdx);
             }
+
+            _halfMoveClocks.Push(HalfMoveClock);
 
             if (pieceType == PieceType.Pawn || move.IsCapture)
             {

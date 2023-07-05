@@ -113,5 +113,46 @@ namespace RV.Chess.Board.Tests
             game.MakeMove(san);
             Assert.Equal(resultFen, game.Fen);
         }
+
+        [Theory]
+        [InlineData("2rq1rk1/pp3p1p/3p3Q/3Ppp2/3R4/1P3P2/P1P2nPP/1K5R w - e6 0 20", "dxe6")]
+        [InlineData("r1b2knr/pp1Pp2p/2p4b/3p3q/3P4/2N2N2/PPP2PPP/R3KB1R w KQ - 0 13", "d8=Q+")]
+        [InlineData("r1b2knr/pp1Pp2p/2p4b/3p3q/3P4/2N2N2/PPP2PPP/R3KB1R w KQ - 0 13", "dxc8=Q+")]
+        [InlineData("r1bqk2r/pp1pnpbp/2n1p1p1/2p5/4PP2/2PP1NP1/PP4BP/RNBQK2R w KQkq - 0 8", "Nd4")]
+        public void Moves_Undo(string fen, string san)
+        {
+            var game = new Chessgame();
+            game.SetFen(fen);
+            game.MakeMove(san);
+            game.UndoLastMove();
+            Assert.Equal(fen, game.Fen);
+        }
+
+        [Theory]
+        [InlineData("2bqk2r/p3npbp/2npp1p1/1pp5/4PP2/PPPP1NP1/6BP/1NBQK2R w Kk - 0 10", "O-O",
+                CastlingDirection.WhiteKingside | CastlingDirection.BlackKingside)]
+        [InlineData("r3k3/p1bqnpbp/2npp1p1/1pp5/4PP2/PPPP1NP1/6BP/1NBQK2R b Kq - 0 10", "O-O-O",
+                CastlingDirection.WhiteKingside | CastlingDirection.BlackQueenside)]
+        public void Moves_Undo_RestoresCastlingRights(string fen, string san, CastlingDirection castling)
+        {
+            var game = new Chessgame();
+            game.SetFen(fen);
+            game.MakeMove(san);
+            game.UndoLastMove();
+            Assert.Equal(fen, game.Fen);
+            Assert.Equal(castling, game.CastlingRights.Rights);
+        }
+
+        [Fact]
+        public void Moves_Undo_RestoresEnPassantSquare()
+        {
+            var game = new Chessgame();
+            game.SetFen("2rq1rk1/pp3p1p/3p3Q/3Ppp2/3R4/1P3P2/P1P2nPP/1K5R w - e6 0 20");
+            Assert.Equal(44, game.EnPassantSquareIdx);
+            game.MakeMove("dxe6");
+            Assert.Equal(-1, game.EnPassantSquareIdx);
+            game.UndoLastMove();
+            Assert.Equal(44, game.EnPassantSquareIdx);
+        }
     }
 }
