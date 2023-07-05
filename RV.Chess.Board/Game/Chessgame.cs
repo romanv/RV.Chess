@@ -321,7 +321,7 @@ namespace RV.Chess.Board
 
                 if (pieceType is PieceType.Pawn)
                 {
-                    var moves = Movement.GetPawnMovesFrom(board, sourceSquare, ownBlockers, EnPassantSquareIdx);
+                    var moves = Movement.GetPawnMovesFrom(board, sourceSquare, EnPassantSquareIdx);
                     allMoves.AddRange(moves);
                 }
                 else if (pieceType is PieceType.Rook)

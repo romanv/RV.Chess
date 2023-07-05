@@ -138,7 +138,7 @@
                 ownBlockers, KnightAttacks, enemyKingSquare);
         }
 
-        internal static IList<Move> GetPawnMovesFrom(Chessboard board, int sourceSquare, ulong ownBlockers, int enPassantSquare)
+        internal static IList<Move> GetPawnMovesFrom(Chessboard board, int sourceSquare, int enPassantSquare)
         {
             var result = new List<Move>();
             var side = board.GetPieceSideAt(sourceSquare);
