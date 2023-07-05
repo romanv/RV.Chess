@@ -25,6 +25,11 @@ namespace RV.Chess.Board
             Rights = CastlingDirection.None,
         };
 
+        public void Set(CastlingDirection rights)
+        {
+            Rights = rights;
+        }
+
         public void Add(CastlingDirection direction)
         {
             Rights |= direction;
