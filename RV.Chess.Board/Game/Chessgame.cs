@@ -327,7 +327,7 @@ namespace RV.Chess.Board
             return false;
         }
 
-        private IList<Move> GenerateAllMoves(Chessboard board, Side sideToMove, bool kingInCheck)
+        public IList<Move> GenerateAllMoves(Chessboard board, Side sideToMove, bool kingInCheck)
         {
             var allMoves = new List<Move>();
             var piecesToMove = board.OwnBlockers(sideToMove);
