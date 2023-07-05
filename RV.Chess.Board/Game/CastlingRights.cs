@@ -79,36 +79,26 @@ namespace RV.Chess.Board
 
         public static int GetRookSourceSquare(CastlingDirection direction)
         {
-            switch (direction)
+            return direction switch
             {
-                case CastlingDirection.WhiteKingside:
-                    return 7;
-                case CastlingDirection.WhiteQueenside:
-                    return 0;
-                case CastlingDirection.BlackKingside:
-                    return 63;
-                case CastlingDirection.BlackQueenside:
-                    return 56;
-            }
-
-            return -1;
+                CastlingDirection.WhiteKingside => 7,
+                CastlingDirection.WhiteQueenside => 0,
+                CastlingDirection.BlackKingside => 63,
+                CastlingDirection.BlackQueenside => 56,
+                _ => -1,
+            };
         }
 
         public static int GetRookTargetSquare(CastlingDirection direction)
         {
-            switch (direction)
+            return direction switch
             {
-                case CastlingDirection.WhiteKingside:
-                    return 5;
-                case CastlingDirection.WhiteQueenside:
-                    return 3;
-                case CastlingDirection.BlackKingside:
-                    return 61;
-                case CastlingDirection.BlackQueenside:
-                    return 59;
-            }
-
-            return -1;
+                CastlingDirection.WhiteKingside => 5,
+                CastlingDirection.WhiteQueenside => 3,
+                CastlingDirection.BlackKingside => 61,
+                CastlingDirection.BlackQueenside => 59,
+                _ => -1,
+            };
         }
 
         public override string ToString()
