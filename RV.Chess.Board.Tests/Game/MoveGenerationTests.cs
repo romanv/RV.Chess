@@ -113,6 +113,7 @@ namespace RV.Chess.Board.Tests
         [InlineData("rnbqkb1r/pppppppp/8/8/2n5/3P1P2/PPP1P1PP/R3KBNR w KQkq - 0 1", "e1", new string[] { "c1" })]
         [InlineData("rnbqkb1r/pppppppp/8/8/2n5/3P1P2/PPP1P1PP/R3K2R w KQkq - 0 1", "e1", new string[] { "c1", "g1" })]
         [InlineData("rnbqk2r/pppppppp/8/8/2n5/3P1P2/PPP1P1PP/R3K2R b KQkq - 0 1", "e8", new string[] { "g8" })]
+        [InlineData("r3k2r/p1ppqpb1/bn2pnp1/3PN3/4P3/1p3Q1p/PPPBBPPP/RN2K2R w KQkq - 0 2", "e1", new string[] { "g1" })]
         public void Moves_King_Castling(string fen, string sourceSquare, string[] allowedTargetSquares)
         {
             var game = new Chessgame();

@@ -91,14 +91,14 @@ namespace RV.Chess.Board
                     || side == Side.Black && castlingRights.Can(CastlingDirection.BlackQueenside);
 
                 if (canCastleKingside
-                    && IsSafeCastleBetween(board, kingSquare, kingSquare + 3, side))
+                    && CanCastleBetween(board, kingSquare, kingSquare + 3, 3, -3, side))
                 {
                     var castleDirection = side == Side.White ? CastlingDirection.WhiteKingside : CastlingDirection.BlackKingside;
                     moves.Add(new Move(PieceType.King, side, kingSquare, kingSquare + 2, castling: castleDirection));
                 }
 
                 if (canCastleQueenside
-                    && IsSafeCastleBetween(board, kingSquare, kingSquare - 3, side))
+                    && CanCastleBetween(board, kingSquare, kingSquare - 4, -3, 4, side))
                 {
                     var castleDirection = side == Side.White ? CastlingDirection.WhiteQueenside : CastlingDirection.BlackQueenside;
                     moves.Add(new Move(PieceType.King, side, kingSquare, kingSquare - 2, castling: castleDirection));
@@ -108,18 +108,25 @@ namespace RV.Chess.Board
             return moves;
         }
 
-        private static bool IsSafeCastleBetween(Chessboard board, int kingSquare, int rookSquare, Side kingSide)
+        private static bool CanCastleBetween(
+            Chessboard board,
+            int kingSquare,
+            int rookSquare,
+            int kingShift,
+            int rookShift,
+            Side kingSide)
         {
-            var castlingRay = RayBetween(kingSquare, rookSquare);
+            var kingMovementRay = RayBetween(kingSquare, kingSquare + kingShift);
+            var rookMovementRay = RayBetween(rookSquare, rookSquare + rookShift);
 
-            if ((board.OccupiedBoard & castlingRay) > 0)
+            if ((board.OccupiedBoard & rookMovementRay) > 0)
             {
                 return false;
             }
 
-            while (castlingRay > 0)
+            while (kingMovementRay > 0)
             {
-                var square = castlingRay.LastSignificantBitIndex();
+                var square = kingMovementRay.LastSignificantBitIndex();
 
                 // can't castle if there are pieces on the castle line or castling squares are under attack
                 if (IsSquareAttacked(board, square, kingSide.Opposite()))
@@ -127,7 +134,7 @@ namespace RV.Chess.Board
                     return false;
                 }
 
-                castlingRay &= ~(1UL << square);
+                kingMovementRay &= ~(1UL << square);
             }
 
             return true;
