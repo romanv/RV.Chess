@@ -163,21 +163,24 @@ namespace RV.Chess.Board
 
         public Move MakeUncheckedMove(int fromIdx, int toIdx, PieceType promoteTo = PieceType.Queen)
         {
-            var matchingMoves = GenerateAllMoves(_board, SideToMove, false)
-                .Where(m => m.FromIdx == fromIdx && m.ToIdx == toIdx)
-                .ToList();
+            var allMoves = GenerateAllMoves(_board, SideToMove, false);
+            // can't simply find single move by using fromIdx, because we need
+            // other moves by the same piece type for SAN disambiguation
+            var movingPieceType = _board.GetPieceTypeAt(fromIdx);
+            var matchingMoves = allMoves.Where(m => m.PieceType == movingPieceType && m.ToIdx == toIdx);
             var pinned = Movement.GetPinnedPieces(_board, SideToMove);
             var legalMoves = RemoveIllegalMoves(_board, SideToMove, matchingMoves, pinned, false);
+            var movesByPiece = legalMoves.Where(m => m.FromIdx == fromIdx).ToList();
             SanGenerator.Generate(legalMoves);
 
-            if (legalMoves.Count == 1)
+            if (movesByPiece.Count == 1)
             {
-                MakeMoveOnBoard(legalMoves[0]);
-                return legalMoves[0];
+                MakeMoveOnBoard(movesByPiece[0]);
+                return movesByPiece[0];
             }
             else
             {
-                var matchingPromotion = legalMoves.FirstOrDefault(m => m.PromoteTo == promoteTo);
+                var matchingPromotion = movesByPiece.FirstOrDefault(m => m.PromoteTo == promoteTo);
 
                 if (matchingPromotion != null)
                 {
