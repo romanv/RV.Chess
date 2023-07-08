@@ -40,6 +40,14 @@
             Castling = castling;
         }
 
+        public static Move NullMove(Side side)
+        {
+            return new Move(PieceType.None, side, 0, 0)
+            {
+                IsNullMove = true,
+            };
+        }
+
         public void SetCheck(bool check)
         {
             IsCheck = check;
@@ -54,6 +62,8 @@
         {
             San = san;
         }
+
+        public bool IsNullMove { get; private set; }
 
         public PieceType PieceType { get; }
 

@@ -83,14 +83,19 @@ namespace RV.Chess.Board
 
         public string Fen => FEN.BuildFEN(this);
 
-        public void MakeNullMove()
+        public Move MakeNullMove()
         {
+            var nullMove = Move.NullMove(SideToMove);
+            Moves.Add(nullMove);
+
             if (SideToMove == Side.Black)
             {
                 CurrentMoveNumber++;
             }
 
             SideToMove = SideToMove.Opposite();
+
+            return nullMove;
         }
 
         public Move MakeMove(string san)

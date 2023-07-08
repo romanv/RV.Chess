@@ -52,6 +52,25 @@ namespace RV.Chess.Board.Tests
             Assert.Equal(resultFen, game.Fen);
         }
 
+        [Fact]
+        public void Moves_NullMove_DoesNotChangePiecePositions()
+        {
+            var game = new Chessgame();
+            var fen = "2rq1rk1/pp3p1p/3p3Q/3Ppp2/3R4/1P3P2/P1P2nPP/1K5R w - e6 0 20";
+            game.SetFen(fen);
+            game.MakeNullMove();
+            Assert.Equal(fen.Split(' ')[0], game.Fen.Split(' ')[0]);
+        }
+
+        [Fact]
+        public void Moves_NullMove_ChangesSideToMove()
+        {
+            var game = new Chessgame();
+            game.SetFen("2rq1rk1/pp3p1p/3p3Q/3Ppp2/3R4/1P3P2/P1P2nPP/1K5R w - e6 0 20");
+            game.MakeNullMove();
+            Assert.Equal("b", game.Fen.Split(' ')[1]);
+        }
+
         [Theory]
         [InlineData("r1b1k2r/ppppqNpp/2n2n2/4p3/2B1P3/8/PPPP1bPP/RNBQ1K1R w kq - 2 7", "Nxh8",
             "r1b1k2N/ppppq1pp/2n2n2/4p3/2B1P3/8/PPPP1bPP/RNBQ1K1R b q - 0 7")]
