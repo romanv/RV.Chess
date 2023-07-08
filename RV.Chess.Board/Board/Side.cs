@@ -2,9 +2,9 @@
 {
     public enum Side
     {
-        Black,
-        White,
-        None,
+        White = 0,
+        Black = 1,
+        None = 2,
     }
 
     public static class SideExtensions

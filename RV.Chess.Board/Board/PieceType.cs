@@ -2,13 +2,13 @@
 {
     public enum PieceType
     {
-        Bishop,
-        King,
-        Knight,
-        Pawn,
-        Queen,
-        Rook,
-        None,
+        None = 0,
+        King = 1,
+        Queen = 2,
+        Rook = 3,
+        Bishop = 4,
+        Knight = 5,
+        Pawn = 6,
     }
 
     public static class PieceTypeExtensions
