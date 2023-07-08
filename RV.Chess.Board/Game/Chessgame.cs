@@ -7,9 +7,10 @@ namespace RV.Chess.Board
     public class Chessgame
     {
         private readonly Chessboard _board = new();
-        private readonly StaticStack<int> _halfMoveClocks = new(300);
-        private readonly StaticStack<CastlingDirection> _castlingRights = new(4);
-        private readonly StaticStack<PieceType> _captures = new(128);
+        private readonly Stack<int> _halfMoveClocks = new(400);
+        private readonly Stack<CastlingDirection> _castlingRights = new(400);
+        private readonly Stack<PieceType> _captures = new(128);
+        private readonly Stack<int> _enPassantSquares = new(400);
 
         public Chessgame()
         {
@@ -202,18 +203,19 @@ namespace RV.Chess.Board
                 CurrentMoveNumber--;
             }
 
-            if (_halfMoveClocks.Count > 0)
+            if (last.IsNullMove)
             {
-                HalfMoveClock = _halfMoveClocks.Pop();
+                Moves.RemoveAt(Moves.Count - 1);
+                SideToMove = SideToMove.Opposite();
+                return;
             }
-            else
-            {
-                HalfMoveClock = 0;
-            }
+
+            EnPassantSquareIdx = _enPassantSquares.Pop();
+            CastlingRights.Set(_castlingRights.Pop());
+            HalfMoveClock = _halfMoveClocks.Pop();
 
             if (last.IsCastling)
             {
-                CastlingRights.Set(_castlingRights.Pop());
                 _board.RemovePieceAt(last.CastlingRookTargetSquareIdx);
                 _board.AddPiece(PieceType.Rook, last.Side, last.CastlingRookSourceSquareIdx);
                 _board.RemovePieceAt(last.ToIdx);
@@ -224,7 +226,6 @@ namespace RV.Chess.Board
                 _board.AddPiece(_captures.Pop(), last.Side.Opposite(), last.EnPassantCaptureTarget);
                 _board.RemovePieceAt(last.ToIdx);
                 _board.AddPiece(PieceType.Pawn, last.Side, last.FromIdx);
-                EnPassantSquareIdx = last.ToIdx;
             }
             else
             {
@@ -273,7 +274,6 @@ namespace RV.Chess.Board
             _board.AddPiece(PieceType.Rook, side, move.CastlingRookTargetSquareIdx);
             _board.RemovePieceAt(move.FromIdx);
             _board.AddPiece(PieceType.King, side, move.ToIdx);
-            _castlingRights.Push(CastlingRights.Rights);
             CastlingRights.RemoveForSide(side);
         }
 
@@ -281,6 +281,10 @@ namespace RV.Chess.Board
         {
             var pieceType = _board.GetPieceTypeAt(move.FromIdx);
             var pieceSide = _board.GetPieceSideAt(move.FromIdx);
+
+            _castlingRights.Push(CastlingRights.Rights);
+            _halfMoveClocks.Push(HalfMoveClock);
+            _enPassantSquares.Push(EnPassantSquareIdx);
 
             if (pieceType == PieceType.Pawn)
             {
@@ -342,8 +346,6 @@ namespace RV.Chess.Board
             {
                 _board.AddPiece(pieceType, pieceSide, move.ToIdx);
             }
-
-            _halfMoveClocks.Push(HalfMoveClock);
 
             if (pieceType == PieceType.Pawn || move.IsCapture)
             {

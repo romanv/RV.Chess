@@ -152,7 +152,19 @@ namespace RV.Chess.Board.Tests
                 CastlingDirection.WhiteKingside | CastlingDirection.BlackKingside)]
         [InlineData("r3k3/p1bqnpbp/2npp1p1/1pp5/4PP2/PPPP1NP1/6BP/1NBQK2R b Kq - 0 10", "O-O-O",
                 CastlingDirection.WhiteKingside | CastlingDirection.BlackQueenside)]
-        public void Moves_Undo_RestoresCastlingRights(string fen, string san, CastlingDirection castling)
+        public void Moves_Undo_UndoingCastlingRestoresCastlingRights(string fen, string san, CastlingDirection castling)
+        {
+            var game = new Chessgame();
+            game.SetFen(fen);
+            game.MakeMove(san);
+            game.UndoLastMove();
+            Assert.Equal(fen, game.Fen);
+            Assert.Equal(castling, game.CastlingRights.Rights);
+        }
+
+        [Theory]
+        [InlineData("r1bq2k1/1p1n2bn/p2p4/2pP1r2/P6p/2N1BP2/1P2B2P/R2QKN1R w K - 0 18", "Rg1", CastlingDirection.WhiteKingside)]
+        public void Moves_Undo_UndoingRookMoveRestoresCastlingRights(string fen, string san, CastlingDirection castling)
         {
             var game = new Chessgame();
             game.SetFen(fen);
@@ -163,7 +175,7 @@ namespace RV.Chess.Board.Tests
         }
 
         [Fact]
-        public void Moves_Undo_RestoresEnPassantSquare()
+        public void Moves_Undo_EnPassant_UndoingCaptureRestoresSquare()
         {
             var game = new Chessgame();
             game.SetFen("2rq1rk1/pp3p1p/3p3Q/3Ppp2/3R4/1P3P2/P1P2nPP/1K5R w - e6 0 20");
@@ -172,6 +184,28 @@ namespace RV.Chess.Board.Tests
             Assert.Equal(-1, game.EnPassantSquareIdx);
             game.UndoLastMove();
             Assert.Equal(44, game.EnPassantSquareIdx);
+        }
+
+        [Fact]
+        public void Moves_Undo_EnPassant_UndoingPawnMoveRemovesSquare()
+        {
+            var game = new Chessgame("r6r/pQ3pp1/3kbn1p/2b1N3/3qp3/8/PPPP1PPP/RNB1K2R w KQ - 3 16");
+            game.MakeMove("f4");
+            game.UndoLastMove();
+            Assert.Equal(-1, game.EnPassantSquareIdx);
+        }
+
+        [Fact]
+        public void Moves_Undo_RemovesNullMove()
+        {
+            var game = new Chessgame();
+            var fen = "2rq1rk1/pp3p1p/3p3Q/3Ppp2/3R4/1P3P2/P1P2nPP/1K5R w - e6 0 20";
+            game.SetFen(fen);
+            game.MakeNullMove();
+            var moveCount = game.Moves.Count;
+            game.UndoLastMove();
+            Assert.Equal(fen, game.Fen);
+            Assert.Equal(moveCount - 1, game.Moves.Count);
         }
     }
 }
