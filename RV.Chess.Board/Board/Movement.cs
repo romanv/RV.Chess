@@ -1,4 +1,6 @@
-﻿namespace RV.Chess.Board
+﻿using System.Collections.Immutable;
+
+namespace RV.Chess.Board
 {
     internal static class Movement
     {

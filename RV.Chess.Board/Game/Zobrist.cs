@@ -41,7 +41,7 @@
             return PIECES[64 * index + square];
         }
 
-        private static uint HashCastling (CastlingRights cr)
+        private static uint HashCastling(CastlingRights cr)
         {
             uint hash = 0;
 
