@@ -1,4 +1,4 @@
-﻿namespace RV.Chess.Board
+﻿namespace RV.Chess.Board.Types
 {
     public enum PieceType
     {
@@ -24,6 +24,7 @@
             _ => '?',
         };
 
-        public static char ToChar(this PieceType type, Side side) => side == Side.White ? type.TypeChar() : char.ToLower(type.TypeChar());
+        public static char ToChar(this PieceType type, Side side) =>
+            side == Side.White ? type.TypeChar() : char.ToLower(type.TypeChar());
     }
 }

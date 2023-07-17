@@ -1,4 +1,7 @@
-﻿using Xunit;
+﻿using RV.Chess.Board.Game;
+using RV.Chess.Board.Types;
+using RV.Chess.Board.Utils;
+using Xunit;
 
 namespace RV.Chess.Board.Tests
 {
@@ -7,31 +10,30 @@ namespace RV.Chess.Board.Tests
         [Fact]
         public void CorrectSquareConversion()
         {
-            Assert.Equal(0, Chessboard.SquareToIdx("a1"));
-            Assert.Equal(63, Chessboard.SquareToIdx("h8"));
-            Assert.Equal(-1, Chessboard.SquareToIdx("a0"));
+            Assert.Equal(0, Coordinates.SquareToIdx("a1"));
+            Assert.Equal(63, Coordinates.SquareToIdx("h8"));
+            Assert.Equal(-1, Coordinates.SquareToIdx("a0"));
         }
 
         [Fact]
         public void CorrectOccupied()
         {
-            var board = new Chessboard();
+            var board = new BoardState();
             Assert.True(board.IsOccupied("a1"));
             Assert.True(board.IsOccupied("a7"));
             Assert.False(board.IsOccupied("h3"));
             Assert.False(board.IsOccupied("c4"));
-            Assert.Throws<InvalidDataException>(() => board.IsOccupied("a0"));
         }
 
         [Fact]
         public void CorrectPieceAdded()
         {
-            var board = new Chessboard();
+            var board = new BoardState();
             Assert.False(board.IsOccupied("a3"));
-            board.AddPiece(PieceType.Bishop, Side.Black, "a3");
+            board.AddPiece(PieceType.Bishop, Side.Black, Coordinates.SquareToIdx("a3"));
             Assert.True(board.IsOccupied("a3"));
-            var type = board.GetPieceTypeAt("a3");
-            var side = board.GetPieceSideAt("a3");
+            var type = board.GetPieceTypeAt(Coordinates.SquareToIdx("a3"));
+            var side = board.GetPieceSideAt(Coordinates.SquareToIdx("a3"));
             Assert.Equal(PieceType.Bishop, type);
             Assert.Equal(Side.Black, side);
         }
@@ -39,7 +41,7 @@ namespace RV.Chess.Board.Tests
         [Fact]
         public void CorrectPieceRemoved()
         {
-            var board = new Chessboard();
+            var board = new BoardState();
             Assert.True(board.IsOccupied("a1"));
             board.RemovePieceAt("a1");
             Assert.False(board.IsOccupied("a1"));
@@ -48,9 +50,9 @@ namespace RV.Chess.Board.Tests
         [Fact]
         public void CorrectKingsSquare()
         {
-            var board = new Chessboard();
-            Assert.Equal(4, board.GetKingSquare(Side.White));
-            Assert.Equal(60, board.GetKingSquare(Side.Black));
+            var board = new BoardState();
+            Assert.Equal(4, board.GetOwnKingSquare(Side.White));
+            Assert.Equal(60, board.GetOwnKingSquare(Side.Black));
         }
     }
 }

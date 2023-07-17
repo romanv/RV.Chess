@@ -1,52 +1,78 @@
-﻿using System.Numerics;
+﻿using System.Diagnostics;
+using System.Numerics;
+using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace RV.Chess.Board
 {
     internal static class BitExtensions
     {
-        // https://matthewarcus.wordpress.com/2012/11/18/reversing-a-64-bit-word/
-        internal static ulong Reverse(this ulong value)
-        {
-            const ulong M0 = 0x5555555555555555UL;
-            const ulong M1 = 0x0300c0303030c303UL;
-            const ulong M2 = 0x00c0300c03f0003fUL;
-            const ulong M3 = 0x00000ffc00003fffUL;
-
-            var n = ((value >> 1) & M0) | (value & M0) << 1;
-            n = SwapBits(n, M1, 4);
-            n = SwapBits(n, M2, 8);
-            n = SwapBits(n, M3, 20);
-            n = (n >> 34) | (n << 30);
-
-            return n;
-        }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static bool HasSingleBitSet(this ulong value)
         {
             return BitOperations.PopCount(value) == 1;
         }
 
-        internal static int LastSignificantBitIndex(this ulong value)
-        {
-            return 63 - BitOperations.LeadingZeroCount(value);
-        }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static ulong SetAt(this ulong value, int bitIdx)
         {
             return value | (1UL << bitIdx);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static ulong RemoveAt(this ulong value, int bitIdx)
         {
             return value & ~(1UL << bitIdx);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static bool OccupiedAt(this ulong value, int square) => (value & (1UL << square)) != 0;
 
-        private static ulong SwapBits(ulong num, ulong mask, int shift)
+        internal static string ToBinString(this ulong value) =>
+            $"{Convert.ToString((long)value, toBase: 2)}";
+
+#if DEBUG
+        public static void Print(this ulong value)
         {
-            var q = ((num >> shift) ^ num) & mask;
-            return num ^ q ^ (q << shift);
+            var sb = new StringBuilder();
+            sb.AppendLine("  ┌───┬───┬───┬───┬───┬───┬───┬───┐");
+
+            for (var rank = 7; rank >= 0; rank--)
+            {
+                sb.Append($"{rank + 1} ");
+
+                for (var file = 0; file < 8; file++)
+                {
+                    var isEmpty = true;
+                    var squareIdx = rank * 8 + file;
+
+                    if ((value & (1UL << squareIdx)) > 0)
+                    {
+                        sb.Append("│ X ");
+                        isEmpty = false;
+                    }
+
+                    if (isEmpty)
+                    {
+                        sb.Append("│   ");
+                    }
+                }
+
+                sb.Append("|\n");
+
+                if (rank > 0)
+                {
+                    sb.AppendLine("  ├───┼───┼───┼───┼───┼───┼───┼───┤");
+                }
+                else
+                {
+                    sb.AppendLine("  └───┴───┴───┴───┴───┴───┴───┴───┘");
+                    sb.AppendLine("    a   b   c   d   e   f   g   h");
+                }
+            }
+
+            Debug.WriteLine(sb.ToString());
         }
+#endif
     }
 }

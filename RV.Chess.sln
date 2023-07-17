@@ -11,7 +11,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RV.Chess.PGN", "RV.Chess.PG
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RV.Chess.PGN.Tests", "RV.Chess.PGN.Tests\RV.Chess.PGN.Tests.csproj", "{1B4CB866-9996-43EC-B831-99999A1D0E14}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RV.Chess.PerfomanceTests", "RV.Chess.PerfomanceTests\RV.Chess.PerfomanceTests.csproj", "{71B3F52F-9DCC-4971-9106-9BC3E8A178C2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RV.Chess.PerformanceTests", "RV.Chess.PerfomanceTests\RV.Chess.PerformanceTests.csproj", "{71B3F52F-9DCC-4971-9106-9BC3E8A178C2}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RV.Chess.CBReader", "RV.Chess.CBReader\RV.Chess.CBReader.csproj", "{9EA71318-381C-4DDD-B9A8-D66519CBA2C5}"
 EndProject

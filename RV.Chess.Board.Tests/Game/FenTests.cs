@@ -1,4 +1,8 @@
-﻿using Xunit;
+﻿using System.Numerics;
+using RV.Chess.Board.Game;
+using RV.Chess.Board.Types;
+using RV.Chess.Board.Utils;
+using Xunit;
 
 namespace RV.Chess.Board.Tests
 {
@@ -9,29 +13,29 @@ namespace RV.Chess.Board.Tests
         {
             var g = new Chessgame();
             g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 w - - 0 1");
-            Assert.Equal(PieceType.Pawn, g.Board.GetPieceTypeAt("h8"));
-            Assert.Equal(Side.Black, g.Board.GetPieceSideAt("h8"));
-            Assert.Equal(PieceType.Queen, g.Board.GetPieceTypeAt("b7"));
-            Assert.Equal(Side.White, g.Board.GetPieceSideAt("b7"));
-            Assert.Equal(PieceType.King, g.Board.GetPieceTypeAt("e5"));
-            Assert.Equal(Side.Black, g.Board.GetPieceSideAt("e5"));
-            Assert.Equal(PieceType.King, g.Board.GetPieceTypeAt("d4"));
-            Assert.Equal(Side.White, g.Board.GetPieceSideAt("d4"));
-            Assert.Equal(PieceType.Queen, g.Board.GetPieceTypeAt("g2"));
-            Assert.Equal(Side.Black, g.Board.GetPieceSideAt("g2"));
-            Assert.Equal(PieceType.Pawn, g.Board.GetPieceTypeAt("a1"));
-            Assert.Equal(Side.White, g.Board.GetPieceSideAt("a1"));
+            Assert.Equal(PieceType.Pawn, g.Board.GetPieceTypeAt(Coordinates.SquareToIdx("h8")));
+            Assert.Equal(Side.Black, g.Board.GetPieceSideAt(Coordinates.SquareToIdx("h8")));
+            Assert.Equal(PieceType.Queen, g.Board.GetPieceTypeAt(Coordinates.SquareToIdx("b7")));
+            Assert.Equal(Side.White, g.Board.GetPieceSideAt(Coordinates.SquareToIdx("b7")));
+            Assert.Equal(PieceType.King, g.Board.GetPieceTypeAt(Coordinates.SquareToIdx("e5")));
+            Assert.Equal(Side.Black, g.Board.GetPieceSideAt(Coordinates.SquareToIdx("e5")));
+            Assert.Equal(PieceType.King, g.Board.GetPieceTypeAt(Coordinates.SquareToIdx("d4")));
+            Assert.Equal(Side.White, g.Board.GetPieceSideAt(Coordinates.SquareToIdx("d4")));
+            Assert.Equal(PieceType.Queen, g.Board.GetPieceTypeAt(Coordinates.SquareToIdx("g2")));
+            Assert.Equal(Side.Black, g.Board.GetPieceSideAt(Coordinates.SquareToIdx("g2")));
+            Assert.Equal(PieceType.Pawn, g.Board.GetPieceTypeAt(Coordinates.SquareToIdx("a1")));
+            Assert.Equal(Side.White, g.Board.GetPieceSideAt(Coordinates.SquareToIdx("a1")));
         }
 
         [Fact]
-        public void Fen_ThrowsForIncorrectPiecePart()
+        public void Fen_ReturnsFalseForIncorrectPiecePart()
         {
             var g = new Chessgame();
-            Assert.Throws<InvalidDataException>(() => g.SetFen("7z/1Q6/8/4k3/3K4/8/6q1/P7 w - - 0 1"));
-            Assert.Throws<InvalidDataException>(() => g.SetFen("rnbqkbnr/pppppppp/8/7/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"));
-            Assert.Throws<InvalidDataException>(() => g.SetFen("rnbqkbnr/2ppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"));
-            Assert.Throws<InvalidDataException>(() => g.SetFen("rnbqkbnr/2ppppppp/8/8/8//PPPPPPPP/RNBQKBNR w KQkq - 0 1"));
-            Assert.Throws<InvalidDataException>(() => g.SetFen("rnbqkbnr/pppppppp/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"));
+            Assert.False(g.SetFen("7z/1Q6/8/4k3/3K4/8/6q1/P7 w - - 0 1"));
+            Assert.False(g.SetFen("rnbqkbnr/pppppppp/8/7/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"));
+            Assert.False(g.SetFen("rnbqkbnr/2ppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"));
+            Assert.False(g.SetFen("rnbqkbnr/2ppppppp/8/8/8//PPPPPPPP/RNBQKBNR w KQkq - 0 1"));
+            Assert.False(g.SetFen("rnbqkbnr/pppppppp/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"));
         }
 
         [Fact]
@@ -42,9 +46,8 @@ namespace RV.Chess.Board.Tests
             Assert.Equal(Side.Black, g.SideToMove);
             g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 w - - 0 1");
             Assert.Equal(Side.White, g.SideToMove);
-
-            Assert.Throws<InvalidDataException>(() => g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 z - - 0 1"));
-            Assert.Throws<InvalidDataException>(() => g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 w- - 0 1"));
+            Assert.False(g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 z - - 0 1"));
+            Assert.False(g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 w- - 0 1"));
         }
 
         [Fact]
@@ -53,30 +56,29 @@ namespace RV.Chess.Board.Tests
             var g = new Chessgame();
 
             g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 b KQkq - 0 1");
-            Assert.True(g.CastlingRights.Rights.HasFlag(CastlingDirection.WhiteKingside | CastlingDirection.WhiteQueenside
-                | CastlingDirection.BlackKingside | CastlingDirection.BlackQueenside));
+            Assert.True(g.CastlingRights.CanCastle(CastlingRights.WhiteKingside | CastlingRights.WhiteQueenside
+                | CastlingRights.BlackKingside | CastlingRights.BlackQueenside));
 
             g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 b KQ - 0 1");
-            Assert.False(g.CastlingRights.Rights.HasFlag(CastlingDirection.BlackKingside | CastlingDirection.BlackQueenside));
+            Assert.False(g.CastlingRights.CanCastle(CastlingRights.BlackKingside | CastlingRights.BlackQueenside));
 
             g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 b kq - 0 1");
-            Assert.False(g.CastlingRights.Rights.HasFlag(CastlingDirection.WhiteKingside | CastlingDirection.WhiteQueenside));
+            Assert.False(g.CastlingRights.CanCastle(CastlingRights.WhiteKingside | CastlingRights.WhiteQueenside));
 
             g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 b K - 0 1");
-            Assert.True(g.CastlingRights.Rights.HasFlag(CastlingDirection.WhiteKingside));
-            Assert.False(g.CastlingRights.Rights.HasFlag(CastlingDirection.WhiteQueenside));
+            Assert.True(g.CastlingRights.CanCastle(CastlingRights.WhiteKingside));
+            Assert.False(g.CastlingRights.CanCastle(CastlingRights.WhiteQueenside));
 
             g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 b - - 0 1");
-            Assert.False(g.CastlingRights.Rights.HasFlag(CastlingDirection.WhiteKingside));
+            Assert.False(g.CastlingRights.CanCastle(CastlingRights.WhiteKingside));
         }
 
         [Fact]
-        public void Fen_ThrowsIncorrectCastlingRights()
+        public void Fen_ReturnsFalseForIncorrectCastlingRights()
         {
             var g = new Chessgame();
-
-            Assert.Throws<InvalidDataException> (() => g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 b 0 - 0 1"));
-            Assert.Throws<InvalidDataException> (() => g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 b KQkqKQ - 0 1"));
+            Assert.False(g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 b 0 - 0 1"));
+            Assert.False(g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 b KQkqKQ - 0 1"));
         }
 
         [Fact]
@@ -84,13 +86,12 @@ namespace RV.Chess.Board.Tests
         {
             var g = new Chessgame();
             g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 b KQkq c3 0 1");
-            Assert.Equal("c3", Chessboard.IdxToSquare(g.EnPassantSquareIdx));
+            Assert.Equal("c3", Coordinates.IdxToSquare(BitOperations.TrailingZeroCount(g.EpSquareMask)));
             g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 b KQkq - 0 1");
-            Assert.Equal(-1, g.EnPassantSquareIdx);
-
-            Assert.Throws<InvalidDataException>(() => g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 b KQkq 0 1"));
-            Assert.Throws<InvalidDataException>(() => g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 b KQkq -- 0 1"));
-            Assert.Throws<InvalidDataException>(() => g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 b KQkq c9 0 1"));
+            Assert.Equal(0UL, g.EpSquareMask);
+            Assert.False(g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 b KQkq 0 1"));
+            Assert.False(g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 b KQkq -- 0 1"));
+            Assert.False(g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 b KQkq c9 0 1"));
         }
 
         [Fact]
@@ -99,9 +100,8 @@ namespace RV.Chess.Board.Tests
             var g = new Chessgame();
             g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 w - - 0 38");
             Assert.Equal(38, g.CurrentMoveNumber);
-
-            Assert.Throws<InvalidDataException>(() => g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 w - - 0 0"));
-            Assert.Throws<InvalidDataException>(() => g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 w - - 0 z"));
+            Assert.False(g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 w - - 0 0"));
+            Assert.False(g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 w - - 0 z"));
         }
 
         [Theory]

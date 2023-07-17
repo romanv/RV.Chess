@@ -1,4 +1,7 @@
 ﻿using System.Text.Json.Nodes;
+using RV.Chess.Board.Game;
+using RV.Chess.Board.Tests.Utils;
+using RV.Chess.Board.Types;
 using Xunit;
 
 namespace RV.Chess.Board.Tests
@@ -8,21 +11,18 @@ namespace RV.Chess.Board.Tests
         [Fact]
         public void Rook_Basic_Correct()
         {
-            var game = new Chessgame();
-            game.SetFen("7k/8/8/8/8/8/p7/R1p4K w - - 0 1");
-            var rookMoves = game.GenerateMoves().Where(m => m.PieceType is PieceType.Rook);
-
+            var rookMoves = new Chessgame("7k/8/8/8/8/8/p7/R1p4K w - - 0 1").GetLegalMoves()
+                .Where(m => m.Piece is PieceType.Rook);
             Assert.Single(rookMoves.Where(m => m.San == "Rb1"));
             Assert.Single(rookMoves.Where(m => m.San == "Rxa2"));
+            Assert.Single(rookMoves.Where(m => m.San == "Rxc1"));
         }
 
         [Fact]
         public void Disambiguate_TwoPiecesByRank_Correct()
         {
-            var game = new Chessgame();
-            game.SetFen("7k/8/8/8/P7/RP6/pP6/RN5K w - - 0 1");
-            var rookMoves = game.GenerateMoves().Where(m => m.PieceType is PieceType.Rook);
-
+            var rookMoves = new Chessgame("7k/8/8/8/P7/RP6/pP6/RN5K w - - 0 1").GetLegalMoves()
+                .Where(m => m.Piece is PieceType.Rook);
             Assert.Single(rookMoves.Where(m => m.San == "R1xa2"));
             Assert.Single(rookMoves.Where(m => m.San == "R3xa2"));
         }
@@ -52,10 +52,8 @@ namespace RV.Chess.Board.Tests
             {
                 var startingFen = (string)testCase!["start"]?.AsObject()["fen"]!;
                 var expectedMoves = testCase!["expected"]?.AsArray().Select(m => (string)m!["move"]!);
-                var game = new Chessgame(startingFen);
-                var moves = game.GenerateMoves();
-
-                Assert.Equal(expectedMoves!.Count(), moves.Length);
+                var moves = new Chessgame(startingFen).GetLegalMoves();
+                Assert.Equal(expectedMoves!.Count(), moves.Count());
                 Assert.True(moves.All(m => expectedMoves!.Where(em => em == m.San).Count() == 1));
             }
         }

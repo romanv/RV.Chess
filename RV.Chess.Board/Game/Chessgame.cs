@@ -1,16 +1,20 @@
-﻿using System.Collections.Immutable;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Buffers;
+using System.Collections.Immutable;
+using System.Diagnostics;
+using System.Numerics;
+using Microsoft.Extensions.ObjectPool;
+using RV.Chess.Board.Types;
 using RV.Chess.Board.Utils;
 
-namespace RV.Chess.Board
+namespace RV.Chess.Board.Game
 {
     public class Chessgame
     {
-        private readonly Chessboard _board = new();
-        private readonly Stack<int> _halfMoveClocks = new(400);
-        private readonly Stack<CastlingDirection> _castlingRights = new(400);
-        private readonly Stack<PieceType> _captures = new(128);
-        private readonly Stack<int> _enPassantSquares = new(400);
+        internal readonly Stack<FastMove> _moveList = new();
+        private const int MAX_MOVES = 220;
+        private readonly DefaultObjectPool<BoardState> _boardsPool = new(new DefaultPooledObjectPolicy<BoardState>());
+        private readonly FastMove[] _moves = new FastMove[MAX_MOVES];
+        private readonly ArrayPool<FastMove> _movesPool = ArrayPool<FastMove>.Shared;
 
         public Chessgame()
         {
@@ -21,50 +25,42 @@ namespace RV.Chess.Board
             SetFen(fen);
         }
 
-        public Chessboard Board => _board;
-
-        public static Chessgame FromFen(string fen)
-        {
-            var game = new Chessgame();
-            game.SetFen(fen);
-
-            return game;
-        }
+        public CastlingRights CastlingRights { get; internal set; } = CastlingRights.All;
+        public int CurrentMoveNumber { get; internal set; } = 1;
+        public int EpSquare => BitOperations.TrailingZeroCount(EpSquareMask);
+        public string Fen => FenGenerator.BuildFen(this);
+        public int HalfMoveClockStart { get; internal set; } = 0;
+        public Side SideToMove { get; internal set; } = Side.White;
+        internal BoardState Board { get; } = new();
+        internal ulong EpSquareMask { get; set; } = 0;
 
         public void Reset()
         {
-            _board.Reset();
+            _moveList.Clear();
+            Board.Reset();
             CurrentMoveNumber = 1;
-            HalfMoveClock = 0;
-            _halfMoveClocks.Clear();
-            _castlingRights.Clear();
-            _captures.Clear();
             SideToMove = Side.White;
             CastlingRights = CastlingRights.All;
-            EnPassantSquareIdx = -1;
-            Moves.Clear();
+            EpSquareMask = 0;
         }
 
-        public int CurrentMoveNumber { get; internal set; } = 1;
+        public List<Move> Moves { get; } = new List<Move>();
 
-        public int HalfMoveClock { get; internal set; } = 1;
+        public uint Hash { get; internal set; } = Zobrist.DefaultPositionHash;
 
-        public Side SideToMove { get; internal set; } = Side.White;
-
-        public CastlingRights CastlingRights { get; internal set; } = CastlingRights.All;
-
-        public int EnPassantSquareIdx { get; internal set; } = -1;
-
-        public List<Move> Moves { get; internal set; } = new();
-
-        public void SetFen(string fen)
+        public void SetCastling(CastlingRights rights)
         {
-            FEN.PutFENDataIntoChessgame(this, fen);
+            CastlingRights = rights;
         }
 
-        public void SetSide(Side side)
+        public void SetEnPassant(int square)
         {
-            SideToMove = side;
+            EpSquareMask = 1UL << square;
+        }
+
+        public bool SetFen(string fen)
+        {
+            return FenGenerator.ReadFen(this, fen);
         }
 
         public void SetMoveNo(int moveNo)
@@ -72,22 +68,184 @@ namespace RV.Chess.Board
             CurrentMoveNumber = moveNo;
         }
 
-        public void SetEnPassant(int squareIdx)
+        public void SetSide(Side side)
         {
-            EnPassantSquareIdx = squareIdx;
+            SideToMove = side;
         }
 
-        public void SetCastling(CastlingRights rights)
+        public ImmutableList<Move> GetLegalMoves()
         {
-            CastlingRights = rights;
+            var result = new List<Move>();
+            var legal = GenerateMoves();
+
+            foreach (var fm in legal)
+            {
+                var m = Move.FromFastMove(fm);
+                m.San = SanGenerator.Generate(fm, legal);
+                result.Add(m);
+            }
+
+            return result.ToImmutableList();
         }
 
-        public string Fen => FEN.BuildFEN(this);
-
-        public Move MakeNullMove()
+        public bool TryMakeMove(string san, bool fillSan = true)
         {
-            var nullMove = Move.NullMove(SideToMove);
-            Moves.Add(nullMove);
+            var legal = GenerateMoves();
+
+            for (var i = 0; i < legal.Length; i++)
+            {
+                var fmSan = SanGenerator.Generate(legal[i], legal);
+
+                if (fmSan == san)
+                {
+                    MakeMoveOnBoard(legal[i], legal, fillSan);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public bool TryMakeMove(string from, string to, bool fillSan = true)
+        {
+            var legal = GenerateMoves();
+            var matching = Find(legal, from, to);
+
+            if (matching == null)
+            {
+                return false;
+            }
+
+            MakeMoveOnBoard(matching.Value, legal, fillSan);
+            return true;
+        }
+
+        public bool TryMakeMove(Move move, bool fillSan = true) => TryMakeMove(move.From, move.To, fillSan);
+
+        public void UndoLastMove()
+        {
+            if (!_moveList.Any())
+            {
+                return;
+            }
+
+            var last = _moveList.Pop();
+            CurrentMoveNumber -= (int)last.Side;
+            SideToMove = SideToMove.Opposite();
+            Moves.RemoveAt(Moves.Count - 1);
+
+            if (last.Type == MoveType.Null)
+            {
+                return;
+            }
+
+            if (last.IsCastling)
+            {
+                UndoCastlingMove(last);
+            }
+            else if (last.IsEnPassant)
+            {
+                Board.AddPieceUnsafe(PieceType.Pawn, last.Side.Opposite(), last.EpCaptureTarget);
+                Board.RemovePieceAt(last.To);
+                Board.AddPieceUnsafe(PieceType.Pawn, last.Side, last.From);
+                Hash ^= Zobrist.GetPieceHash(last.EpCaptureTarget, PieceType.Pawn, last.Side.Opposite());
+                Hash ^= Zobrist.GetPieceHash(last.To, last.Type.ToPieceType(), last.Side);
+                Hash ^= Zobrist.GetPieceHash(last.From, PieceType.Pawn, last.Side);
+            }
+            else if (last.IsCapture)
+            {
+                Board.AddPieceUnsafe(last.CapturedPiece, last.Side.Opposite(), last.To);
+                Hash ^= Zobrist.GetPieceHash(last.To, last.CapturedPiece, last.Side.Opposite());
+                Hash ^= Zobrist.GetPieceHash(last.To, last.PieceAfterMove, last.Side);
+                Hash ^= Zobrist.GetPieceHash(last.From, last.Type.ToPieceType(), last.Side);
+            }
+            else
+            {
+                Board.RemovePieceAt(last.To);
+                Hash ^= Zobrist.GetPieceHash(last.To, last.PieceAfterMove, last.Side);
+                Hash ^= Zobrist.GetPieceHash(last.From, last.Type.ToPieceType(), last.Side);
+            }
+
+            var originalMovedPiece = last.IsPromotion ? PieceType.Pawn : last.PieceAfterMove;
+            Board.AddPieceUnsafe(originalMovedPiece, last.Side, last.From);
+            EpSquareMask = last.EpSquareBefore > 0 ? 1UL << last.EpSquareBefore : 0;
+            Hash ^= Zobrist.GetEnPassantHash(EpSquareMask);
+            CastlingRights |= last.CastlingRightsBefore;
+        }
+
+        internal Span<FastMove> GenerateMoves() => GenerateMoves(_moves, Board, SideToMove);
+
+        internal Span<FastMove> GenerateMoves(
+            Span<FastMove> moves,
+            BoardState branchBoard,
+            Side side)
+        {
+            var ownKingSquare = branchBoard.GetOwnKingSquare(side);
+            var checkers = Movement.GetSquareAttackers(branchBoard, ownKingSquare, side.Opposite());
+            var checkersCount = BitOperations.PopCount(checkers);
+            var epSquare = BitOperations.TrailingZeroCount(EpSquareMask);
+            var cursor = 0;
+            int legalCount;
+
+            if (checkersCount > 1)
+            {
+                cursor = Movement.GetKingEvasions(ownKingSquare, side, moves, cursor, branchBoard,
+                    CastlingRights, epSquare);
+                return moves.Slice(0, cursor);
+            }
+            else if (checkersCount == 1)
+            {
+                cursor = Movement.GetKingEvasions(ownKingSquare, side, moves, cursor, branchBoard,
+                    CastlingRights, epSquare);
+                var pinned = Movement.GetPinnedPieces(branchBoard, side);
+                cursor = Movement.GetCheckDefenses(side, moves, cursor, branchBoard, ownKingSquare,
+                    checkers, pinned, CastlingRights, epSquare);
+                legalCount = VerifyMoves(moves.Slice(0, cursor), branchBoard, side);
+            }
+            else
+            {
+                var pinned = Movement.GetPinnedPieces(branchBoard, side);
+                cursor = GeneratePseudoLegalMoves(side, moves, cursor, branchBoard, pinned);
+                legalCount = VerifyMoves(moves.Slice(0, cursor), branchBoard, side);
+            }
+
+            var legals = new FastMove[legalCount];
+
+            for (int i = 0, j = 0; i < cursor; i++)
+            {
+                if (moves[i].IsLegal)
+                {
+                    legals[j++] = moves[i];
+                }
+            }
+
+            return legals;
+        }
+
+        internal FastMove MakeMove(string from, string to, bool fillSan = false)
+        {
+            var legal = GenerateMoves();
+            var matching = Find(legal, from, to) ?? throw new InvalidMoveException(from, to, Fen);
+            MakeMoveOnBoard(matching, legal, fillSan);
+            return matching;
+        }
+
+        internal FastMove MakeMove(FastMove move, bool fillSan = false)
+        {
+            var legal = GenerateMoves();
+            var matching = Find(legal, move) ?? throw new InvalidMoveException(move.From, move.To, Fen);
+            MakeMoveOnBoard(matching, legal, fillSan);
+            return matching;
+        }
+
+        internal FastMove MakeNullMove()
+        {
+            var nullMove = FastMove.CreateNull(
+                SideToMove,
+                BitOperations.TrailingZeroCount(EpSquareMask),
+                CastlingRights);
+            _moveList.Push(nullMove);
+            Moves.Add(Move.FromFastMove(nullMove));
 
             if (SideToMove == Side.Black)
             {
@@ -99,195 +257,152 @@ namespace RV.Chess.Board
             return nullMove;
         }
 
-        public Move MakeMove(string san)
+        private static FastMove? Find(Span<FastMove> moves, string from, string to)
         {
-            var matchingLegalMove = GenerateMoves().FirstOrDefault(m => m.San == san);
-
-            if (matchingLegalMove == null)
+            for (var i = 0; i < moves.Length; i++)
             {
-                throw new InvalidMoveException($"Invalid move {san}")
+                if (moves[i].From == Coordinates.SquareToIdx(from)
+                    && moves[i].To == Coordinates.SquareToIdx(to))
                 {
-                    Position = Fen,
-                };
-            }
-
-            MakeMoveOnBoard(matchingLegalMove);
-
-            return matchingLegalMove;
-        }
-
-        public Move MakeMove(string from, string to)
-        {
-            var matchingLegalMove = GenerateMoves()
-                .FirstOrDefault(m => m.From == from && m.To == to);
-
-            if (matchingLegalMove == null)
-            {
-                throw new InvalidMoveException(from, to, Fen);
-            }
-
-            MakeMoveOnBoard(matchingLegalMove);
-
-            return matchingLegalMove;
-        }
-
-        public Move MakeMove(Move move)
-        {
-            var matchingLegalMove = GenerateMoves()
-                .FirstOrDefault(m => m.From == move.From && m.To == move.To && m.PromoteTo == move.PromoteTo);
-
-            if (matchingLegalMove == null)
-            {
-                throw new InvalidMoveException(move.From, move.To, Fen);
-            }
-
-            MakeMoveOnBoard(matchingLegalMove);
-
-            return matchingLegalMove;
-        }
-
-        public Move MakeMove(int fromIdx, int toIdx)
-        {
-            var matchingLegalMove = GenerateMoves()
-                .FirstOrDefault(m => m.FromIdx == fromIdx && m.ToIdx == toIdx);
-
-            if (matchingLegalMove == null)
-            {
-                throw new InvalidMoveException(Chessboard.IdxToSquare(fromIdx), Chessboard.IdxToSquare(toIdx), Fen);
-            }
-
-            MakeMoveOnBoard(matchingLegalMove);
-
-            return matchingLegalMove;
-        }
-
-        public Move MakeUncheckedMove(int fromIdx, int toIdx, PieceType promoteTo = PieceType.Queen)
-        {
-            var allMoves = GenerateAllMoves(_board, SideToMove, false);
-            // can't simply find single move by using fromIdx, because we need
-            // other moves by the same piece type for SAN disambiguation
-            var movingPieceType = _board.GetPieceTypeAt(fromIdx);
-            var matchingMoves = allMoves.Where(m => m.PieceType == movingPieceType && m.ToIdx == toIdx);
-            var pinned = Movement.GetPinnedPieces(_board, SideToMove);
-            var legalMoves = RemoveIllegalMoves(_board, SideToMove, matchingMoves, pinned, false);
-            var movesByPiece = legalMoves.Where(m => m.FromIdx == fromIdx).ToList();
-            SanGenerator.Generate(legalMoves);
-
-            if (movesByPiece.Count == 1)
-            {
-                MakeMoveOnBoard(movesByPiece[0]);
-                return movesByPiece[0];
-            }
-            else
-            {
-                var matchingPromotion = movesByPiece.FirstOrDefault(m => m.PromoteTo == promoteTo);
-
-                if (matchingPromotion != null)
-                {
-                    MakeMoveOnBoard(matchingPromotion);
-                    return matchingPromotion;
+                    return moves[i];
                 }
             }
 
-            throw new InvalidMoveException(Chessboard.IdxToSquare(fromIdx), Chessboard.IdxToSquare(toIdx), Fen);
+            return null;
         }
 
-        public void UndoLastMove()
+        private static FastMove? Find(Span<FastMove> moves, int from, int to)
         {
-            if (!Moves.Any())
+            for (var i = 0; i < moves.Length; i++)
             {
-                return;
+                if (moves[i].From == from && moves[i].To == to)
+                {
+                    return moves[i];
+                }
             }
 
-            Move last = Moves.Last();
+            return null;
+        }
 
-            if (last.Side == Side.Black)
+        private static FastMove? Find(Span<FastMove> moves, FastMove move)
+        {
+            for (var i = 0; i < moves.Length; i++)
             {
-                CurrentMoveNumber--;
+                if (moves[i] == move)
+                {
+                    return moves[i];
+                }
             }
 
-            if (last.IsNullMove)
-            {
-                Moves.RemoveAt(Moves.Count - 1);
-                SideToMove = SideToMove.Opposite();
-                return;
-            }
+            return null;
+        }
 
-            EnPassantSquareIdx = _enPassantSquares.Pop();
-            CastlingRights.Set(_castlingRights.Pop());
-            HalfMoveClock = _halfMoveClocks.Pop();
+        private int GeneratePseudoLegalMoves(
+            Side side,
+            Span<FastMove> moves,
+            int cursor,
+            BoardState branchBoard,
+            ulong pinned)
+        {
+            var allTargets = ~branchBoard.Occupied[(int)side];
+            var captureTargets = allTargets & (branchBoard.Occupied[(int)side ^ 1] | EpSquareMask);
+            var moveTargets = allTargets ^ captureTargets;
+            var enemyKingSquare = branchBoard.GetEnemyKingSquare(side);
+            var epSquare = BitOperations.TrailingZeroCount(EpSquareMask);
 
-            if (last.IsCastling)
+            if (side == Side.White)
             {
-                _board.RemovePieceAt(last.CastlingRookTargetSquareIdx);
-                _board.AddPiece(PieceType.Rook, last.Side, last.CastlingRookSourceSquareIdx);
-                _board.RemovePieceAt(last.ToIdx);
-                _board.AddPiece(PieceType.King, last.Side, last.FromIdx);
-            }
-            else if (last.IsEnPassant)
-            {
-                _board.AddPiece(_captures.Pop(), last.Side.Opposite(), last.EnPassantCaptureTarget);
-                _board.RemovePieceAt(last.ToIdx);
-                _board.AddPiece(PieceType.Pawn, last.Side, last.FromIdx);
+                cursor = Movement.GetWhitePawnMoves(moveTargets, captureTargets, moves, cursor,
+                    branchBoard, pinned, CastlingRights, epSquare);
             }
             else
             {
-                if (last.IsCapture)
-                {
-                    _board.AddPiece(_captures.Pop(), last.Side.Opposite(), last.ToIdx);
-                }
-                else
-                {
-                    _board.RemovePieceAt(last.ToIdx);
-                }
-
-                PieceType returnPiece = last.PromoteTo != PieceType.None ? PieceType.Pawn : last.PieceType;
-                _board.AddPiece(returnPiece, last.Side, last.FromIdx);
+                cursor = Movement.GetBlackPawnMoves(moveTargets, captureTargets, moves, cursor,
+                    branchBoard, pinned, CastlingRights, epSquare);
             }
 
-            SideToMove = SideToMove.Opposite();
-            Moves.RemoveAt(Moves.Count - 1);
+            cursor = Movement.GetRookMoves(allTargets, side, moves, cursor, branchBoard,
+                pinned, enemyKingSquare, CastlingRights, epSquare);
+            cursor = Movement.GetBishopMoves(allTargets, side, moves, cursor, branchBoard,
+                pinned, enemyKingSquare, CastlingRights, epSquare);
+            cursor = Movement.GetQueenMoves(allTargets, side, moves, cursor, branchBoard,
+                pinned, enemyKingSquare, CastlingRights, epSquare);
+            cursor = Movement.GetKnightMoves(allTargets, side, moves, cursor, branchBoard,
+                pinned, enemyKingSquare, CastlingRights, epSquare);
+            cursor = Movement.GetKingMoves(side, moves, cursor, branchBoard,
+                CastlingRights, epSquare);
+
+            return cursor;
         }
 
-        private void UpdateEnPassantSquare(Side side, Move move)
+        private void MakeCastlingMove(FastMove move)
         {
-            if (side == Side.White && move.SourceRank == 2 && move.TargetRank == 4)
+            Debug.Assert(Board.GetPieceTypeAt(move.CastlingRookFrom) == PieceType.Rook);
+            var side = Board.GetPieceSideAt(move.From);
+
+            switch (move.CastlingRookFrom)
             {
-                EnPassantSquareIdx = move.FromIdx + 8;
+                case 0:
+                    Hash ^= Zobrist.Castling[1]; // Q
+                    break;
+                case 7:
+                    Hash ^= Zobrist.Castling[0]; // K
+                    break;
+                case 56:
+                    Hash ^= Zobrist.Castling[3]; // q
+                    break;
+                case 63:
+                    Hash ^= Zobrist.Castling[2]; // k
+                    break;
             }
-            else if (side == Side.Black && move.SourceRank == 7 && move.TargetRank == 5)
+
+            Board.RemovePieceAt(move.CastlingRookFrom);
+            Board.AddPieceUnsafe(PieceType.Rook, side, move.CastlingRookTo);
+            Board.RemovePieceAt(move.From);
+            Board.AddPieceUnsafe(PieceType.King, side, move.To);
+            CastlingRights = CastlingRights.WithoutSide(side);
+
+            Hash ^= Zobrist.GetPieceHash(move.CastlingRookFrom, PieceType.Rook, side);
+            Hash ^= Zobrist.GetPieceHash(move.CastlingRookTo, PieceType.Rook, side);
+            Hash ^= Zobrist.GetPieceHash(move.From, PieceType.King, side);
+            Hash ^= Zobrist.GetPieceHash(move.To, PieceType.King, side);
+        }
+
+        private void UndoCastlingMove(FastMove move)
+        {
+            Board.RemovePieceAt(move.CastlingRookTo);
+            Board.AddPieceUnsafe(PieceType.Rook, move.Side, move.CastlingRookFrom);
+            Board.RemovePieceAt(move.To);
+            Board.AddPieceUnsafe(PieceType.King, move.Side, move.From);
+
+            Hash ^= Zobrist.GetPieceHash(move.CastlingRookTo, PieceType.Rook, move.Side);
+            Hash ^= Zobrist.GetPieceHash(move.CastlingRookFrom, PieceType.Rook, move.Side);
+            Hash ^= Zobrist.GetPieceHash(move.From, PieceType.King, move.Side);
+            Hash ^= Zobrist.GetPieceHash(move.To, PieceType.King, move.Side);
+
+            switch (move.CastlingRookFrom)
             {
-                EnPassantSquareIdx = move.FromIdx - 8;
-            }
-            else
-            {
-                EnPassantSquareIdx = -1;
+                case 0:
+                    Hash ^= Zobrist.Castling[1]; // Q
+                    break;
+                case 7:
+                    Hash ^= Zobrist.Castling[0]; // K
+                    break;
+                case 56:
+                    Hash ^= Zobrist.Castling[3]; // q
+                    break;
+                case 63:
+                    Hash ^= Zobrist.Castling[2]; // k
+                    break;
             }
         }
 
-        private void MakeCastlingMove(Move move)
+        private void MakeMoveOnBoard(FastMove move, Span<FastMove> allLegal, bool fillSan)
         {
-            if (_board.GetPieceTypeAt(move.CastlingRookSourceSquareIdx) != PieceType.Rook)
-            {
-                throw new Exception($"Invalid castling move in position {Fen} (no rook at square #{move.CastlingRookSourceSquareIdx})");
-            }
+            var pieceType = Board.GetPieceTypeAt(move.From);
+            var pieceSide = Board.GetPieceSideAt(move.From);
 
-            var side = _board.GetPieceSideAt(move.FromIdx);
-            _board.RemovePieceAt(move.CastlingRookSourceSquareIdx);
-            _board.AddPiece(PieceType.Rook, side, move.CastlingRookTargetSquareIdx);
-            _board.RemovePieceAt(move.FromIdx);
-            _board.AddPiece(PieceType.King, side, move.ToIdx);
-            CastlingRights.RemoveForSide(side);
-        }
-
-        private void MakeMoveOnBoard(Move move)
-        {
-            var pieceType = _board.GetPieceTypeAt(move.FromIdx);
-            var pieceSide = _board.GetPieceSideAt(move.FromIdx);
-
-            _castlingRights.Push(CastlingRights.Rights);
-            _halfMoveClocks.Push(HalfMoveClock);
-            _enPassantSquares.Push(EnPassantSquareIdx);
+            Hash ^= Zobrist.GetEnPassantHash(EpSquareMask);
 
             if (pieceType == PieceType.Pawn)
             {
@@ -296,13 +411,16 @@ namespace RV.Chess.Board
                 // special case, because capture target wouldn't be overwritten by the capturer in case of en passant
                 if (move.IsEnPassant)
                 {
-                    _board.RemovePieceAt(move.EnPassantCaptureTarget);
+                    Board.RemovePieceAt(move.EpCaptureTarget);
+                    Hash ^= Zobrist.GetPieceHash(move.EpCaptureTarget, PieceType.Pawn, move.Side.Opposite());
                 }
             }
             else
             {
-                EnPassantSquareIdx = -1;
+                EpSquareMask = 0;
             }
+
+            Hash ^= Zobrist.GetEnPassantHash(EpSquareMask);
 
             if (move.IsCastling)
             {
@@ -313,50 +431,31 @@ namespace RV.Chess.Board
                 // remove castling rights if king or rook moves
                 if (pieceType == PieceType.King)
                 {
-                    CastlingRights.RemoveForSide(pieceSide);
+                    CastlingRights = CastlingRights.WithoutSide(pieceSide);
                 }
                 else if (pieceType == PieceType.Rook)
                 {
-                    CastlingRights.RemoveFromRookMove(move.FromIdx);
+                    CastlingRights = CastlingRights.RemoveByRookMove(move.From);
                 }
 
                 // remove castling rights if rook is captured
                 if (move.IsCapture)
                 {
-                    if (move.IsEnPassant)
+                    if (!move.IsEnPassant)
                     {
-                        _captures.Push(PieceType.Pawn);
-                    }
-                    else
-                    {
-                        _captures.Push(_board.GetPieceTypeAt(move.ToIdx));
+                        Hash ^= Zobrist.GetPieceHash(move.To, move.CapturedPiece, move.Side.Opposite());
                     }
 
-                    if (_board.GetPieceTypeAt(move.ToIdx) == PieceType.Rook)
+                    if (Board.GetPieceTypeAt(move.To) == PieceType.Rook)
                     {
-                        CastlingRights.RemoveFromRookMove(move.ToIdx);
+                        CastlingRights = CastlingRights.RemoveByRookMove(move.To);
                     }
                 }
 
-                _board.RemovePieceAt(move.FromIdx);
-            }
-
-            if (move.PromoteTo != PieceType.None)
-            {
-                _board.AddPiece(move.PromoteTo, pieceSide, move.ToIdx);
-            }
-            else
-            {
-                _board.AddPiece(pieceType, pieceSide, move.ToIdx);
-            }
-
-            if (pieceType == PieceType.Pawn || move.IsCapture)
-            {
-                HalfMoveClock = 0;
-            }
-            else
-            {
-                HalfMoveClock++;
+                Board.RemovePieceAt(move.From);
+                Board.AddPieceUnsafe(move.PieceAfterMove, pieceSide, move.To);
+                Hash ^= Zobrist.GetPieceHash(move.From, move.Type.ToPieceType(), move.Side);
+                Hash ^= Zobrist.GetPieceHash(move.To, move.Type.ToPieceType(), move.Side);
             }
 
             if (SideToMove == Side.Black)
@@ -365,269 +464,136 @@ namespace RV.Chess.Board
             }
 
             SideToMove = SideToMove.Opposite();
-            Moves.Add(move);
-        }
+            _moveList.Push(move);
+            var m = Move.FromFastMove(move);
 
-        public ImmutableArray<Move> GenerateMoves() => GenerateMoves(_board, SideToMove);
-
-        public ImmutableArray<Move> GenerateMoves(Chessboard board, Side sideToMove, bool fastMode = false)
-        {
-            var ownKingSquare = board.GetKingSquare(sideToMove);
-            var pinned = Movement.GetPinnedPieces(board, sideToMove);
-            var checkers = Movement.GetSquareAttackers(board, ownKingSquare, sideToMove.Opposite());
-            var allMoves = GenerateAllMoves(board, sideToMove, checkers > 0);
-            var legalMoves = RemoveIllegalMoves(board, sideToMove, allMoves, pinned, fastMode);
-
-            // if there is only one checking piece, it can potentially be blocked
-            if (checkers > 0)
+            if (fillSan)
             {
-                var defensiveMoves = new List<Move>();
-
-                if (checkers.HasSingleBitSet())
-                {
-                    if (TryFindCheckBlockers(board, sideToMove, legalMoves, checkers, out var blockers))
-                    {
-                        defensiveMoves.AddRange(blockers);
-                    }
-
-                    var checkerCaptures = legalMoves.Where(m =>
-                        (m.FromMask & pinned) == 0
-                        && (
-                            m.IsCapture && m.ToIdx == checkers.LastSignificantBitIndex()
-                            || m.IsEnPassant && m.EnPassantCaptureTarget == checkers.LastSignificantBitIndex()
-                        )
-                    );
-
-                    if (checkerCaptures.Any())
-                    {
-                        defensiveMoves.AddRange(checkerCaptures);
-                    }
-                }
-
-                var evasions = legalMoves.Where(m => m.PieceType == PieceType.King
-                    && !Movement.IsSquareAttacked(board, m.ToIdx, sideToMove.Opposite())
-                    && !defensiveMoves.Contains(m));
-
-                defensiveMoves.AddRange(evasions);
-
-                if (!fastMode)
-                {
-                    SanGenerator.Generate(defensiveMoves);
-                }
-
-                return defensiveMoves.ToImmutableArray();
+                m.San = SanGenerator.Generate(move, allLegal);
             }
 
-            if (!fastMode)
-            {
-                SanGenerator.Generate(legalMoves);
-            }
-
-            return legalMoves.ToImmutableArray();
+            Moves.Add(m);
         }
 
-        /// <summary>
-        /// Should never be called, if there is more, than one checking piece
-        /// </summary>
-        private static bool TryFindCheckBlockers(Chessboard board, Side sideToMove,
-            IEnumerable<Move> legalMoves, ulong checkers, [MaybeNullWhen(false)] out IEnumerable<Move> blockingMoves)
+        private void UpdateEnPassantSquare(Side side, FastMove move)
         {
-            // find, which checkers are sliders and can be blocked
-            var attackerSide = sideToMove.Opposite();
-            var attackerRooks = board.GetPieceBoard(PieceType.Rook, attackerSide);
-            var attackerBishops = board.GetPieceBoard(PieceType.Bishop, attackerSide);
-            var attackerQueens = board.GetPieceBoard(PieceType.Queen, attackerSide);
-            var sliders = (attackerRooks | attackerBishops | attackerQueens) & checkers;
-
-            if (sliders > 0)
+            if (side == Side.White && move.SourceRank == 2 && move.TargetRank == 4)
             {
-                // find the attack ray between the king and the checker
-                // then check, if there is a legal move that covers any square on that ray
-                var checkerSquare = sliders.LastSignificantBitIndex();
-                var attackRay = Movement.RayBetween(checkerSquare, board.GetOwnKingSquare(sideToMove));
-                blockingMoves = legalMoves.Where(m => (m.ToMask & attackRay) > 0);
-                return blockingMoves.Any();
+                EpSquareMask = move.FromMask << 8;
             }
-
-            blockingMoves = default;
-            return false;
+            else if (side == Side.Black && move.SourceRank == 7 && move.TargetRank == 5)
+            {
+                EpSquareMask = move.FromMask >> 8;
+            }
+            else
+            {
+                EpSquareMask = 0;
+            }
         }
 
-        public IList<Move> GenerateAllMoves(Chessboard board, Side sideToMove, bool kingInCheck)
+        private int VerifyMoves(
+            Span<FastMove> moves,
+            BoardState branchBoard,
+            Side sideToMove)
         {
-            var allMoves = new List<Move>();
-            var piecesToMove = board.OwnBlockers(sideToMove);
-            var ownBlockers = board.OwnBlockers(sideToMove);
-            var enemyKingSquare = board.GetKingSquare(sideToMove.Opposite());
+            var legalsCount = 0;
 
-            while (piecesToMove > 0)
+            for (var i = 0; i < moves.Length; i++)
             {
-                var sourceSquare = piecesToMove.LastSignificantBitIndex();
-                var pieceType = board.GetPieceTypeAt(sourceSquare);
+                var isLegal = true;
 
-                if (pieceType is PieceType.Pawn)
+                // find discovered checks and mates by making/unmaking moves (recursively, if needed)
+                if (isLegal && !moves[i].IsCheck)
                 {
-                    var moves = Movement.GetPawnMovesFrom(board, sourceSquare, EnPassantSquareIdx);
-                    allMoves.AddRange(moves);
-                }
-                else if (pieceType is PieceType.Rook)
-                {
-                    var moves = Movement.GetRookMovesFrom(board, sourceSquare, ownBlockers, enemyKingSquare);
-                    allMoves.AddRange(moves);
-                }
-                else if (pieceType is PieceType.Bishop)
-                {
-                    var moves = Movement.GetBishopMovesFrom(board, sourceSquare, ownBlockers, enemyKingSquare);
-                    allMoves.AddRange(moves);
-                }
-                else if (pieceType is PieceType.Queen)
-                {
-                    var moves = Movement.GetQueenMovesFrom(board, sourceSquare, ownBlockers, enemyKingSquare);
-                    allMoves.AddRange(moves);
-                }
-                else if (pieceType is PieceType.Knight)
-                {
-                    var moves = Movement.GetKnightMovesFrom(board, sourceSquare, ownBlockers, enemyKingSquare);
-                    allMoves.AddRange(moves);
-                }
-                else if (pieceType is PieceType.King)
-                {
-                    var moves = Movement.GetKingMovesFrom(board, sourceSquare, ownBlockers, kingInCheck, CastlingRights);
-                    allMoves.AddRange(moves);
-                }
+                    var movingPieceType = branchBoard.GetPieceTypeAt(moves[i].From);
+                    var captureTargetSquare = moves[i].IsEnPassant ? moves[i].EpCaptureTarget : moves[i].To;
+                    var oldEnPassant = EpSquareMask;
+                    branchBoard.RemovePieceAt(moves[i].From);
 
-                piecesToMove &= ~(1UL << sourceSquare);
-            }
-
-            return allMoves;
-        }
-
-        private IList<Move> RemoveIllegalMoves(Chessboard board, Side sideToMove, IEnumerable<Move> allMoves, ulong pinned, bool fastMode)
-        {
-            var legalMoves = new List<Move>();
-
-            foreach (var move in allMoves)
-            {
-                var isLegal = false;
-
-                if (move.PieceType == PieceType.King)
-                {
-                    if (Movement.IsKingMoveSafe(board, move, sideToMove))
+                    if (moves[i].IsCapture)
                     {
-                        isLegal = true;
+                        branchBoard.RemovePieceAt(captureTargetSquare);
                     }
-                }
-                else if (move.IsEnPassant)
-                {
-                    var captureTargetType = board.GetPieceTypeAt(move.EnPassantCaptureTarget);
-                    board.RemovePieceAt(move.FromIdx);
-                    board.RemovePieceAt(move.EnPassantCaptureTarget);
-                    board.AddPiece(PieceType.Pawn, sideToMove, move.ToIdx);
-
-                    if (!Movement.IsSquareAttacked(board, board.GetKingSquare(sideToMove), sideToMove.Opposite()))
+                    else if (moves[i].IsCastling)
                     {
-                        isLegal = true;
+                        branchBoard.RemovePieceAt(moves[i].CastlingRookFrom);
+                        branchBoard.AddPieceUnsafe(PieceType.Rook, sideToMove, moves[i].CastlingRookTo);
                     }
 
-                    board.RemovePieceAt(move.ToIdx);
-                    board.AddPiece(captureTargetType, sideToMove.Opposite(), move.EnPassantCaptureTarget);
-                    board.AddPiece(PieceType.Pawn, sideToMove, move.FromIdx);
-                }
-                else if ((move.FromMask & pinned) == 0)
-                {
-                    // piece is not pinned to the king
-                    isLegal = true;
-                }
-                else if (Movement.IsPinnedPieceMoveSafe(move, board.GetOwnKingSquare(sideToMove)))
-                {
-                    isLegal = true;
-                }
+                    branchBoard.AddPieceUnsafe(moves[i].PieceAfterMove, sideToMove, moves[i].To);
 
-                if (isLegal && !move.IsCheck)
-                {
-                    // find discovered checks separately by making a move and checking if it is legit, then rolling it back
-                    var movingPieceType = board.GetPieceTypeAt(move.FromIdx);
-                    var captureTargetSquare = move.IsEnPassant ? move.EnPassantCaptureTarget : move.ToIdx;
-                    var captureTargetType = board.GetPieceTypeAt(captureTargetSquare);
-                    var oldEnPassant = EnPassantSquareIdx;
-                    board.RemovePieceAt(move.FromIdx);
-
-                    if (captureTargetType != PieceType.None)
-                    {
-                        board.RemovePieceAt(captureTargetSquare);
-                    }
-
-                    if (move.IsCastling)
-                    {
-                        board.RemovePieceAt(move.CastlingRookSourceSquareIdx);
-                        board.AddPiece(PieceType.Rook, sideToMove, move.CastlingRookTargetSquareIdx);
-                    }
-
-                    var pieceTypeAfterMove = move.PromoteTo != PieceType.None ? move.PromoteTo : movingPieceType;
-                    board.AddPiece(pieceTypeAfterMove, sideToMove, move.ToIdx);
-
-                    var enemyKingAttackedAfterMove =
-                        Movement.IsSquareAttacked(board, board.GetEnemyKingSquare(sideToMove), sideToMove);
-                    var ownKingExposedAfterMove =
-                        Movement.IsSquareAttacked(board, board.GetOwnKingSquare(sideToMove), sideToMove.Opposite());
-
-                    if (!fastMode && enemyKingAttackedAfterMove && !ownKingExposedAfterMove)
-                    {
-                        move.SetCheck(true);
-
-                        // check if opposing side has any legal moves after we make the check
-                        var nextPlyBoard = new Chessboard(board);
-
-                        if (movingPieceType == PieceType.Pawn && Math.Abs(move.FromIdx - move.ToIdx) == 16)
-                        {
-                            EnPassantSquareIdx = move.ToIdx > move.FromIdx
-                                ? move.FromIdx + 8
-                                : move.ToIdx + 8;
-                        }
-                        else
-                        {
-                            EnPassantSquareIdx = -1;
-                        }
-
-                        // no need to generate SAN notations for evasions, since we only want to check for their existence
-                        var evasionMoves = GenerateMoves(nextPlyBoard, sideToMove.Opposite(), false);
-
-                        if (!evasionMoves.Any())
-                        {
-                            move.SetMate(true);
-                        }
-                    }
-
-                    // undo the tested move
-                    board.RemovePieceAt(move.ToIdx);
-                    board.AddPiece(movingPieceType, sideToMove, move.FromIdx);
-
-                    if (move.IsCastling)
-                    {
-                        board.RemovePieceAt(move.CastlingRookTargetSquareIdx);
-                        board.AddPiece(PieceType.Rook, sideToMove, move.CastlingRookSourceSquareIdx);
-                    }
-
-                    if (captureTargetType != PieceType.None)
-                    {
-                        board.AddPiece(captureTargetType, sideToMove.Opposite(), captureTargetSquare);
-                    }
+                    // other captures are already checked durung the move generation phase
+                    var ownKingExposedAfterMove = moves[i].IsEnPassant
+                        ? Movement.IsSquareAttacked(branchBoard.GetOwnKingSquare(sideToMove), sideToMove.Opposite(), branchBoard)
+                        : false;
 
                     if (ownKingExposedAfterMove)
                     {
                         isLegal = false;
                     }
+                    else
+                    {
+                        var enemyKingAttackedAfterMove =
+                            Movement.IsSquareAttacked(branchBoard.GetEnemyKingSquare(sideToMove), sideToMove, branchBoard);
 
-                    EnPassantSquareIdx = oldEnPassant;
+                        if (enemyKingAttackedAfterMove)
+                        {
+                            moves[i].SetCheck();
+
+                            // look for mate by checking, if the opposing side has any legal moves after we make the check
+                            var nextPlyBoard = _boardsPool.Get();
+                            nextPlyBoard.CopyFrom(branchBoard);
+                            var nextPlyMoves = _movesPool.Rent(MAX_MOVES);
+
+                            if (movingPieceType == PieceType.Pawn && Math.Abs(moves[i].From - moves[i].To) == 16)
+                            {
+                                EpSquareMask = moves[i].To > moves[i].From
+                                    ? moves[i].FromMask << 8
+                                    : moves[i].FromMask >> 8;
+                            }
+                            else
+                            {
+                                EpSquareMask = 0;
+                            }
+
+                            var evasionMoves = GenerateMoves(nextPlyMoves, nextPlyBoard, sideToMove.Opposite());
+
+                            if (evasionMoves.IsEmpty)
+                            {
+                                moves[i].SetMate();
+                            }
+
+                            _movesPool.Return(nextPlyMoves);
+                            _boardsPool.Return(nextPlyBoard);
+                        }
+                    }
+
+                    // undo the tested move
+                    branchBoard.RemovePieceAt(moves[i].To);
+                    branchBoard.AddPieceUnsafe(movingPieceType, sideToMove, moves[i].From);
+
+                    if (moves[i].IsCastling)
+                    {
+                        branchBoard.RemovePieceAt(moves[i].CastlingRookTo);
+                        branchBoard.AddPieceUnsafe(PieceType.Rook, sideToMove, moves[i].CastlingRookFrom);
+                    }
+
+                    if (moves[i].IsCapture)
+                    {
+                        branchBoard.AddPieceUnsafe(moves[i].CapturedPiece, sideToMove.Opposite(), captureTargetSquare);
+                    }
+
+                    EpSquareMask = oldEnPassant;
                 }
 
                 if (isLegal)
                 {
-                    legalMoves.Add(move);
+                    legalsCount++;
+                    moves[i].Legalize();
                 }
             }
 
-            return legalMoves;
+            return legalsCount;
         }
     }
 }

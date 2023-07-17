@@ -1,22 +1,60 @@
-﻿using Xunit;
+﻿using RV.Chess.Board.Game;
+using Xunit;
 
 namespace RV.Chess.Board.Tests
 {
     public class UtilityTests
     {
         [Theory]
-        [InlineData("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1", 2185010000)]
-        [InlineData("r2qkb1r/1b2nppp/p1npp3/1p6/4PBPP/PNN5/1PP2P2/R2QKB1R b KQkq - 2 10", 3663386480)]
-        [InlineData("r4rk1/p1p2q2/2npn1p1/1p2p2p/4Pp1P/2PP1NP1/PPN1QP2/2KR1R2 b - - 3 21", 3672840077)]
-        [InlineData("1r2r1k1/2pqn3/3pN1p1/p2P3p/1p1NP2P/2P2PR1/P3Q3/1K1R4 b - - 0 32", 661151459)]
-        [InlineData("1r4k1/2pqn3/3pN1p1/p2P3p/2Q1P2P/1N3PR1/P7/Kq6 w - - 0 38", 3284458125)]
-        [InlineData("5Qn1/5NRk/q2p4/3p1p1p/4P2P/5P2/P1K5/8 b - - 0 50", 589006652)]
-        public void Zobrist_Hash(string fen, uint expected)
+        [InlineData("r1bqkb1r/pppp1ppp/2n2n2/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4", 1303801420)]
+        [InlineData("r1bqk2r/pppp1ppp/2n2n2/1Bb1p3/4P3/2P2N2/PP1P1PPP/RNBQ1RK1 b kq - 0 5", 1970240199)]
+        [InlineData("r3kbnr/pppppppp/8/3BN3/3Bn3/8/PPPPPPPP/R3KB1R w KQkq - 0 1", 3135486655)]
+        [InlineData("r3kbnr/pppppppp/8/3BN3/3Bn3/8/PPPPPPPP/R3KB1R b KQkq - 0 1", 1110809621)]
+        public void Zobrist_HashesAreConsistent(string fen, uint expected)
         {
-            var game = new Chessgame();
-            game.SetFen(fen);
-            var hash = game.ZobristHash();
-            Assert.Equal(expected, hash);
+            var game = new Chessgame(fen);
+            Assert.Equal(expected, game.Hash);
+        }
+
+        [Theory]
+        [InlineData("r1bqkb1r/pppp1ppp/2n2n2/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4", "O-O")]
+        [InlineData("r1bqk2r/pppp1ppp/2n2n2/1Bb1p3/4P3/2P2N2/PP1P1PPP/RNBQ1RK1 b kq - 0 5", "O-O")]
+        [InlineData("r3kbnr/pppppppp/8/3BN3/3Bn3/8/PPPPPPPP/R3KB1R w KQkq - 0 1", "O-O-O")]
+        [InlineData("r3kbnr/pppppppp/8/3BN3/3Bn3/8/PPPPPPPP/R3KB1R b KQkq - 0 1", "O-O-O")]
+        public void Zobrist_UndoingCastlingRestoresHash(string fen, string move)
+        {
+            var game = new Chessgame(fen);
+            var hash = game.Hash;
+            game.TryMakeMove(move);
+            Assert.NotEqual(hash, game.Hash);
+            game.UndoLastMove();
+            Assert.Equal(hash, game.Hash);
+        }
+
+        [Theory]
+        [InlineData("K7/8/8/8/4pP2/8/8/7k b - f3 0 1", "exf3")]
+        [InlineData("rnbqkb1r/ppp1pppp/5n2/3pP3/8/5N2/PPPP1PPP/RNBQKB1R w KQkq d6 0 2", "exd6")]
+        public void Zobrist_UndoingEnPassantRestoresHash(string fen, string move)
+        {
+            var game = new Chessgame(fen);
+            var hash = game.Hash;
+            game.TryMakeMove(move);
+            Assert.NotEqual(hash, game.Hash);
+            game.UndoLastMove();
+            Assert.Equal(hash, game.Hash);
+        }
+
+        [Theory]
+        [InlineData("rnbq1b1r/pppPkppp/5n2/4p3/8/5N2/PPPP1PPP/RNBQKB1R w KQ - 1 4", "dxc8=Q")]
+        [InlineData("rnQq1b1r/ppp1kppp/5n2/8/2BP4/5N2/PPPKpPPP/RNBQ3R b - - 1 7", "e1=Q+")]
+        public void Zobrist_UndoingPromotionRestoresHash(string fen, string move)
+        {
+            var game = new Chessgame(fen);
+            var hash = game.Hash;
+            game.TryMakeMove(move);
+            Assert.NotEqual(hash, game.Hash);
+            game.UndoLastMove();
+            Assert.Equal(hash, game.Hash);
         }
     }
 }

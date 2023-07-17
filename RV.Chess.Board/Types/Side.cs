@@ -1,4 +1,4 @@
-﻿namespace RV.Chess.Board
+﻿namespace RV.Chess.Board.Types
 {
     public enum Side
     {
@@ -9,6 +9,6 @@
 
     public static class SideExtensions
     {
-        public static Side Opposite(this Side c) => c == Side.White ? Side.Black : Side.White;
+        public static Side Opposite(this Side s) => (Side)((int)s ^ 1);
     }
 }
