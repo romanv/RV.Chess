@@ -632,7 +632,7 @@ namespace RV.Chess.Board.Game
                             queenTargets, enemyKingSquare, cRights, epSquare);
                         break;
                     case PieceType.Knight:
-                        var knightTargets = KnightAttacks[from] & targets;
+                        var knightTargets = KnightAttacks[from] & targets & pinMask;
                         cursor = MovesFromTargets(from, side, moves, cursor, board, MoveType.Knight,
                             knightTargets, enemyKingSquare, cRights, epSquare);
                         break;

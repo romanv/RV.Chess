@@ -247,6 +247,16 @@ namespace RV.Chess.Board.Tests
             Assert.Empty(knightMoves);
         }
 
+        [Fact]
+        public void Pins_Knight_CantMoveIfPinned_TwoKnights()
+        {
+            var knightMoves = new Chessgame("r1bqk2r/ppp2ppp/2nb4/1B3n2/4Q3/2N2N2/PPP2PPP/R1B1K2R b KQkq - 7 10")
+                .GenerateMoves().Where(m => m.Type is MoveType.Knight).ToList();
+            Assert.Single(knightMoves);
+            Assert.Equal("f5", Coordinates.IdxToSquare(knightMoves.First().From));
+            Assert.Equal("e7", Coordinates.IdxToSquare(knightMoves.First().To));
+        }
+
         [Theory]
         [InlineData("k7/8/b7/8/2P5/8/4K3/8 w - - 0 1")]
         [InlineData("K7/8/3k4/4p3/8/8/7Q/8 b - - 0 1")]
