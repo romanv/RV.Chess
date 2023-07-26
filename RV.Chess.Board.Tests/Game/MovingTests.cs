@@ -54,8 +54,19 @@ namespace RV.Chess.Board.Tests
         public void Promotions_Basic(string fen, string from, string to, string fenAfter)
         {
             var game = new Chessgame(fen);
-            game.MakeMove(from, to);
+            game.MakeMove(from, to, PieceType.Bishop);
             Assert.Equal(fenAfter, game.Fen);
+        }
+
+        [Theory]
+        [InlineData("r1b2knr/pp1Pp2p/2p4b/3p3q/3P4/2N2N2/PPP2PPP/R3KB1R w KQ - 0 13", "d8=R+",
+            "r1bR1knr/pp2p2p/2p4b/3p3q/3P4/2N2N2/PPP2PPP/R3KB1R b KQ - 0 13")]
+        public void Promotions_BySan_PromotesToCorrectPiece(string fen, string san, string fenAfter)
+        {
+            var game = new Chessgame(fen);
+            var move = game.GetLegalMoves().FirstOrDefault(m => m.San == san);
+            game.TryMakeMove(move!);
+            Assert.Equal(game.Fen, fenAfter);
         }
 
         [Theory]
@@ -119,14 +130,14 @@ namespace RV.Chess.Board.Tests
         }
 
         [Theory]
-        [InlineData("2rq1rk1/pp3p1p/3p3Q/3Ppp2/3R4/1P3P2/P1P2nPP/1K5R w - e6 0 20", "d5", "e6")]
-        [InlineData("r1b2knr/pp1Pp2p/2p4b/3p3q/3P4/2N2N2/PPP2PPP/R3KB1R w KQ - 0 13", "d7", "d8")]
-        [InlineData("r1b2knr/pp1Pp2p/2p4b/3p3q/3P4/2N2N2/PPP2PPP/R3KB1R w KQ - 0 13", "d7", "c8")]
-        [InlineData("r1bqk2r/pp1pnpbp/2n1p1p1/2p5/4PP2/2PP1NP1/PP4BP/RNBQK2R w KQkq - 0 8", "f3", "d4")]
-        public void Undo_Basic(string fen, string from, string to)
+        [InlineData("2rq1rk1/pp3p1p/3p3Q/3Ppp2/3R4/1P3P2/P1P2nPP/1K5R w - e6 0 20", "d5", "e6", PieceType.None)]
+        [InlineData("r1b2knr/pp1Pp2p/2p4b/3p3q/3P4/2N2N2/PPP2PPP/R3KB1R w KQ - 0 13", "d7", "d8", PieceType.Queen)]
+        [InlineData("r1b2knr/pp1Pp2p/2p4b/3p3q/3P4/2N2N2/PPP2PPP/R3KB1R w KQ - 0 13", "d7", "c8", PieceType.Queen)]
+        [InlineData("r1bqk2r/pp1pnpbp/2n1p1p1/2p5/4PP2/2PP1NP1/PP4BP/RNBQK2R w KQkq - 0 8", "f3", "d4", PieceType.None)]
+        public void Undo_Basic(string fen, string from, string to, PieceType promoteTo)
         {
             var game = new Chessgame(fen);
-            game.MakeMove(from, to);
+            game.MakeMove(from, to, promoteTo);
             game.UndoLastMove();
             Assert.Equal(fen, game.Fen);
         }

@@ -106,10 +106,10 @@ namespace RV.Chess.Board.Game
             return false;
         }
 
-        public bool TryMakeMove(string from, string to, bool fillSan = true)
+        public bool TryMakeMove(string from, string to, PieceType promoteTo = PieceType.None, bool fillSan = true)
         {
             var legal = GenerateMoves();
-            var matching = Find(legal, from, to);
+            var matching = Find(legal, from, to, promoteTo);
 
             if (matching == null)
             {
@@ -120,7 +120,8 @@ namespace RV.Chess.Board.Game
             return true;
         }
 
-        public bool TryMakeMove(Move move, bool fillSan = true) => TryMakeMove(move.From, move.To, fillSan);
+        public bool TryMakeMove(Move move, bool fillSan = true) =>
+            TryMakeMove(move.From, move.To, move.PromoteTo, fillSan);
 
         public void UndoLastMove()
         {
@@ -222,10 +223,10 @@ namespace RV.Chess.Board.Game
             return legals;
         }
 
-        internal FastMove MakeMove(string from, string to, bool fillSan = false)
+        internal FastMove MakeMove(string from, string to, PieceType promoteTo = PieceType.None, bool fillSan = false)
         {
             var legal = GenerateMoves();
-            var matching = Find(legal, from, to) ?? throw new InvalidMoveException(from, to, Fen);
+            var matching = Find(legal, from, to, promoteTo) ?? throw new InvalidMoveException(from, to, Fen);
             MakeMoveOnBoard(matching, legal, fillSan);
             return matching;
         }
@@ -257,12 +258,13 @@ namespace RV.Chess.Board.Game
             return nullMove;
         }
 
-        private static FastMove? Find(Span<FastMove> moves, string from, string to)
+        private static FastMove? Find(Span<FastMove> moves, string from, string to, PieceType promoteTo = PieceType.None)
         {
             for (var i = 0; i < moves.Length; i++)
             {
                 if (moves[i].From == Coordinates.SquareToIdx(from)
-                    && moves[i].To == Coordinates.SquareToIdx(to))
+                    && moves[i].To == Coordinates.SquareToIdx(to)
+                    && moves[i].PromotionChar == promoteTo.TypeChar())
                 {
                     return moves[i];
                 }
@@ -271,11 +273,11 @@ namespace RV.Chess.Board.Game
             return null;
         }
 
-        private static FastMove? Find(Span<FastMove> moves, int from, int to)
+        private static FastMove? Find(Span<FastMove> moves, int from, int to, PieceType promoteTo = PieceType.None)
         {
             for (var i = 0; i < moves.Length; i++)
             {
-                if (moves[i].From == from && moves[i].To == to)
+                if (moves[i].From == from && moves[i].To == to && moves[i].PromotionChar == promoteTo.TypeChar())
                 {
                     return moves[i];
                 }
