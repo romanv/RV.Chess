@@ -503,7 +503,7 @@ namespace RV.Chess.Board.Game
                 var isLegal = true;
 
                 // find discovered checks and mates by making/unmaking moves (recursively, if needed)
-                if (isLegal && !moves[i].IsCheck)
+                if (!moves[i].IsCheck)
                 {
                     var movingPieceType = branchBoard.GetPieceTypeAt(moves[i].From);
                     var captureTargetSquare = moves[i].IsEnPassant ? moves[i].EpCaptureTarget : moves[i].To;
