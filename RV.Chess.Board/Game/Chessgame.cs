@@ -274,19 +274,6 @@ namespace RV.Chess.Board.Game
             return null;
         }
 
-        private static FastMove? Find(Span<FastMove> moves, int from, int to, PieceType promoteTo = PieceType.None)
-        {
-            for (var i = 0; i < moves.Length; i++)
-            {
-                if (moves[i].From == from && moves[i].To == to && moves[i].PromotionChar == promoteTo.TypeChar())
-                {
-                    return moves[i];
-                }
-            }
-
-            return null;
-        }
-
         private static FastMove? Find(Span<FastMove> moves, FastMove move)
         {
             for (var i = 0; i < moves.Length; i++)
