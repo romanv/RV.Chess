@@ -27,7 +27,7 @@ namespace RV.Chess.PGN
                         if (shouldPrintNumber)
                         {
                             sb.Append(m.MoveNumber);
-                            sb.Append(m.Side == Side.White ? ". " : "... ");
+                            sb.Append(m.Side == Side.White ? "." : "...");
                         }
 
                         sb.Append(m.San);

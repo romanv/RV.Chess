@@ -7,5 +7,6 @@
         Move,
         Terminator,
         Variation,
+        NAG,
     }
 }
