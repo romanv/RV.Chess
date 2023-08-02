@@ -75,7 +75,7 @@ namespace RV.PGNParser.Tests
             using var parser = PgnParser.FromString("(1. b3 O-O-O) *");
             var moves = parser.GetGames().First().Value.Moves;
             Assert.IsType<PgnVariationNode>(moves.First());
-            Assert.Equal("1... O-O-O", (moves.First() as PgnVariationNode)?.Moves[1].ToString());
+            Assert.Equal("1...O-O-O", (moves.First() as PgnVariationNode)?.Moves[1].ToString());
         }
 
         [Theory]
