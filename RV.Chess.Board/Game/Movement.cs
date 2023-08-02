@@ -397,7 +397,7 @@ namespace RV.Chess.Board.Game
                 {
                     var to = from + 8;
 
-                    if (to / 8 == 0)
+                    if (to / 8 == 7)
                     {
                         cursor = AddPawnPromotions(from, to, Side.White, moves, cursor, cRights, epSquare);
                     }
@@ -419,7 +419,7 @@ namespace RV.Chess.Board.Game
                     var to = BitOperations.TrailingZeroCount(captures);
                     var victim = board.GetPieceTypeAt(to == epSquare ? to - 8 : to);
 
-                    if (to / 8 == 0)
+                    if (to / 8 == 7)
                     {
                         cursor = AddPawnPromotionsWithCapture(from, to, victim, Side.White, moves, cursor, cRights, epSquare);
                     }
