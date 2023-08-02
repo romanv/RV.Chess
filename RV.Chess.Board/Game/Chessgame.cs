@@ -138,6 +138,7 @@ namespace RV.Chess.Board.Game
 
             if (last.Type == MoveType.Null)
             {
+                EpSquareMask = last.EpSquareBefore > 0 ? 1UL << last.EpSquareBefore : 0;
                 return;
             }
 
@@ -254,6 +255,7 @@ namespace RV.Chess.Board.Game
                 CurrentMoveNumber++;
             }
 
+            EpSquareMask = 0;
             SideToMove = SideToMove.Opposite();
 
             return nullMove;
