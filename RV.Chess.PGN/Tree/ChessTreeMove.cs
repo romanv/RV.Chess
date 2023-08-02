@@ -1,4 +1,6 @@
-﻿namespace RV.Chess.PGN.Tree
+﻿using RV.Chess.Shared.Types;
+
+namespace RV.Chess.PGN.Tree
 {
     public class ChessTreeMove : IEquatable<ChessTreeMove>
     {

@@ -1,4 +1,4 @@
-﻿namespace RV.Chess.Board.Types
+﻿namespace RV.Chess.Shared.Types
 {
     public enum Side
     {

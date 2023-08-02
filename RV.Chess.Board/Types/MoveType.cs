@@ -1,4 +1,6 @@
-﻿namespace RV.Chess.Board.Types
+﻿using RV.Chess.Shared.Types;
+
+namespace RV.Chess.Board.Types
 {
     internal enum MoveType
     {

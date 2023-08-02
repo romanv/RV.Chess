@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using RV.Chess.Shared.Types;
 
 namespace RV.Chess.PGN
 {

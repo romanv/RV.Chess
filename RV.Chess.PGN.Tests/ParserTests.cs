@@ -1,5 +1,6 @@
 ﻿using Xunit;
 using RV.Chess.PGN;
+using RV.Chess.Shared.Types;
 
 namespace RV.PGNParser.Tests
 {

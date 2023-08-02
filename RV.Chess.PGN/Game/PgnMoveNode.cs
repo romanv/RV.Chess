@@ -1,4 +1,6 @@
-﻿namespace RV.Chess.PGN
+﻿using RV.Chess.Shared.Types;
+
+namespace RV.Chess.PGN
 {
     public class PgnMoveNode : PgnNode
     {

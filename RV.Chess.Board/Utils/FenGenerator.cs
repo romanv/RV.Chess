@@ -2,6 +2,7 @@
 using System.Text;
 using RV.Chess.Board.Game;
 using RV.Chess.Board.Types;
+using RV.Chess.Shared.Types;
 
 namespace RV.Chess.Board.Utils
 {

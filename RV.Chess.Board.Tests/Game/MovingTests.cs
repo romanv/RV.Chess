@@ -1,6 +1,6 @@
 ﻿using System.Numerics;
 using RV.Chess.Board.Game;
-using RV.Chess.Board.Types;
+using RV.Chess.Shared.Types;
 using Xunit;
 
 namespace RV.Chess.Board.Tests

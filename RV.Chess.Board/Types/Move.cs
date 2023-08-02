@@ -1,4 +1,5 @@
 ﻿using RV.Chess.Board.Utils;
+using RV.Chess.Shared.Types;
 
 namespace RV.Chess.Board.Types
 {

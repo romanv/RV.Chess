@@ -1,4 +1,4 @@
-﻿namespace RV.Chess.PGN
+﻿namespace RV.Chess.Shared.Types
 {
     public enum GameResult
     {

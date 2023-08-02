@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
 using System.Runtime.Intrinsics.X86;
 using RV.Chess.Board.Types;
+using RV.Chess.Shared.Types;
 
 namespace RV.Chess.Board.Game
 {

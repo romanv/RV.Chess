@@ -26,6 +26,10 @@
     <PackageReference Include="Microsoft.Extensions.ObjectPool" Version="7.0.9" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\RV.Chess.Shared\RV.Chess.Shared.csproj" />
+  </ItemGroup>
+
   <PropertyGroup>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>

@@ -1,8 +1,8 @@
-﻿using System.Numerics;
-using System.Diagnostics;
-using RV.Chess.Board.Utils;
+﻿using System.Diagnostics;
+using System.Numerics;
 using System.Text;
-using RV.Chess.Board.Types;
+using RV.Chess.Board.Utils;
+using RV.Chess.Shared.Types;
 
 namespace RV.Chess.Board.Game
 {

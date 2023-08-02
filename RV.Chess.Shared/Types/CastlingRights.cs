@@ -1,6 +1,6 @@
 ﻿using System.Text;
 
-namespace RV.Chess.Board.Types
+namespace RV.Chess.Shared.Types
 {
     [Flags]
     public enum CastlingRights
@@ -15,20 +15,20 @@ namespace RV.Chess.Board.Types
         All = WhiteQueenside | WhiteKingside | BlackQueenside | BlackKingside,
     }
 
-    internal static class CastlingRightsExtensions
+    public static class CastlingRightsExtensions
     {
-        internal static bool CanCastle(this CastlingRights r, CastlingRights dir) => ((int)r & (int)dir) != 0;
+        public static bool CanCastle(this CastlingRights r, CastlingRights dir) => ((int)r & (int)dir) != 0;
 
-        internal static CastlingRights Without(this CastlingRights r, CastlingRights remove) => r & ~remove;
+        public static CastlingRights Without(this CastlingRights r, CastlingRights remove) => r & ~remove;
 
-        internal static CastlingRights WithoutSide(this CastlingRights r, Side side)
+        public static CastlingRights WithoutSide(this CastlingRights r, Side side)
         {
             return side == Side.White
                 ? r & ~(CastlingRights.WhiteKingside | CastlingRights.WhiteQueenside)
                 : r & ~(CastlingRights.BlackKingside | CastlingRights.BlackQueenside);
         }
 
-        internal static CastlingRights RemoveByRookMove(this CastlingRights r, int from)
+        public static CastlingRights RemoveByRookMove(this CastlingRights r, int from)
         {
             return from switch
             {
@@ -40,7 +40,7 @@ namespace RV.Chess.Board.Types
             };
         }
 
-        internal static string AsString(this CastlingRights r)
+        public static string AsString(this CastlingRights r)
         {
             if (r == CastlingRights.None)
             {

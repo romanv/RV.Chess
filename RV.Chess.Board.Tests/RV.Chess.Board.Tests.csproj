@@ -18,6 +18,7 @@
   <ItemGroup>
     <ProjectReference Include="..\RV.Chess.Board\RV.Chess.Board.csproj" />
     <ProjectReference Include="..\RV.Chess.PGN\RV.Chess.PGN.csproj" />
+    <ProjectReference Include="..\RV.Chess.Shared\RV.Chess.Shared.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -5,6 +5,7 @@ using System.Numerics;
 using Microsoft.Extensions.ObjectPool;
 using RV.Chess.Board.Types;
 using RV.Chess.Board.Utils;
+using RV.Chess.Shared.Types;
 
 namespace RV.Chess.Board.Game
 {

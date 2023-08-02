@@ -15,16 +15,16 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Shared\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <InternalsVisibleTo Include="$(AssemblyName).Tests" />
     <InternalsVisibleTo Include="RV.Chess.PerformanceTests" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="FluentResults" Version="3.15.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RV.Chess.Shared\RV.Chess.Shared.csproj" />
   </ItemGroup>
 
 </Project>

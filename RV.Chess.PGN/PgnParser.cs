@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using FluentResults;
 using RV.Chess.PGN.Readers;
 using RV.Chess.PGN.Utils;
+using RV.Chess.Shared.Types;
 
 namespace RV.Chess.PGN
 {
