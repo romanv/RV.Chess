@@ -1,13 +1,12 @@
 ﻿using System.Numerics;
 using RV.Chess.Board.Game;
-using RV.Chess.Board.Types;
 using RV.Chess.Shared.Types;
 
 namespace RV.Chess.Board.Utils
 {
     public static class Zobrist
     {
-        internal const uint DefaultPositionHash = 380329305;
+        internal const uint DefaultPositionHash = 980792291;
 
         internal static uint GetHash(Chessgame game)
         {
@@ -42,7 +41,11 @@ namespace RV.Chess.Board.Utils
             {
                 var piece = game.Board.GetPieceTypeAt(i);
                 var side = game.Board.GetPieceSideAt(i);
-                hash ^= GetPieceHash(i, piece, side);
+
+                if (piece != PieceType.None)
+                {
+                    hash ^= GetPieceHash(i, piece, side);
+                }
             }
 
             hash ^= GetEnPassantHash(game.EpSquareMask);

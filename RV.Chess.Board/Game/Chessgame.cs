@@ -134,6 +134,7 @@ namespace RV.Chess.Board.Game
             var last = _moveList.Pop();
             CurrentMoveNumber -= (int)last.Side;
             SideToMove = SideToMove.Opposite();
+            Hash ^= Zobrist.WhiteTurn;
             Moves.RemoveAt(Moves.Count - 1);
 
             if (last.Type == MoveType.Null)
@@ -257,6 +258,7 @@ namespace RV.Chess.Board.Game
 
             EpSquareMask = 0;
             SideToMove = SideToMove.Opposite();
+            Hash ^= Zobrist.WhiteTurn;
 
             return nullMove;
         }
@@ -456,6 +458,7 @@ namespace RV.Chess.Board.Game
             }
 
             SideToMove = SideToMove.Opposite();
+            Hash ^= Zobrist.WhiteTurn;
             _moveList.Push(move);
             var m = Move.FromFastMove(move);
 
