@@ -13,6 +13,7 @@ namespace RV.Chess.Board.Types
                 {
                     Side = m.Side,
                     IsNullMove = true,
+                    San = "--",
                 };
             }
 
