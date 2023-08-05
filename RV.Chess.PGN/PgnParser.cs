@@ -271,7 +271,7 @@ namespace RV.Chess.PGN
 
             if (_cursor > start)
             {
-                return new PgnAnnotationGlyphNode($"{text.Slice(start, _cursor - start)}");
+                return new PgnAnnotationGlyphNode($"{text[start.._cursor]}");
             }
 
             throw new InvalidDataException($"Malformed NAG node at {_gameChunkStart + _cursor}");
@@ -318,7 +318,7 @@ namespace RV.Chess.PGN
 
             if (_cursor - start > 0)
             {
-                return new PgnMoveNode(moveNo, side, san, text.Slice(start, _cursor - start).ToString());
+                return new PgnMoveNode(moveNo, side, san, text[start.._cursor].ToString());
             }
 
             return new PgnMoveNode(moveNo, side, san);

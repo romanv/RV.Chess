@@ -225,7 +225,7 @@ namespace RV.Chess.Board.Game
             {
                 cursor = Movement.GetKingEvasions(ownKingSquare, side, moves, cursor, branchBoard,
                     CastlingRights, epSquare);
-                return moves.Slice(0, cursor);
+                return moves[..cursor];
             }
             else if (checkersCount == 1)
             {
@@ -234,13 +234,13 @@ namespace RV.Chess.Board.Game
                 var pinned = Movement.GetPinnedPieces(branchBoard, side);
                 cursor = Movement.GetCheckDefenses(side, moves, cursor, branchBoard, ownKingSquare,
                     checkers, pinned, CastlingRights, epSquare);
-                legalCount = VerifyMoves(moves.Slice(0, cursor), branchBoard, side);
+                legalCount = VerifyMoves(moves[..cursor], branchBoard, side);
             }
             else
             {
                 var pinned = Movement.GetPinnedPieces(branchBoard, side);
                 cursor = GeneratePseudoLegalMoves(side, moves, cursor, branchBoard, pinned);
-                legalCount = VerifyMoves(moves.Slice(0, cursor), branchBoard, side);
+                legalCount = VerifyMoves(moves[..cursor], branchBoard, side);
             }
 
             var legals = new FastMove[legalCount];
