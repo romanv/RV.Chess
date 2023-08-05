@@ -49,6 +49,16 @@ namespace RV.Chess.Board.Game
 
         public uint Hash { get; internal set; } = Zobrist.DefaultPositionHash;
 
+        public void ClearBoard()
+        {
+            Board.Clear();
+        }
+
+        public void AddPiece(PieceType type, Side side, int square)
+        {
+            Board.AddPiece(type, side, square);
+        }
+
         public void SetCastling(CastlingRights rights)
         {
             CastlingRights = rights;
@@ -121,8 +131,28 @@ namespace RV.Chess.Board.Game
             return true;
         }
 
+        public bool TryMakeMove(int from, int to, PieceType promoteTo = PieceType.None, bool fillSan = true)
+        {
+            var legal = GenerateMoves();
+            var matching = Find(legal, from, to, promoteTo);
+
+            if (matching == null)
+            {
+                return false;
+            }
+
+            MakeMoveOnBoard(matching.Value, legal, fillSan);
+            return true;
+        }
+
         public bool TryMakeMove(Move move, bool fillSan = true) =>
             TryMakeMove(move.From, move.To, move.PromoteTo, fillSan);
+
+        public bool TryMakeNullMove()
+        {
+            MakeNullMove();
+            return true;
+        }
 
         public void UndoLastMove()
         {
@@ -269,6 +299,21 @@ namespace RV.Chess.Board.Game
             {
                 if (moves[i].From == Coordinates.SquareToIdx(from)
                     && moves[i].To == Coordinates.SquareToIdx(to)
+                    && moves[i].PromotionChar == promoteTo.TypeChar())
+                {
+                    return moves[i];
+                }
+            }
+
+            return null;
+        }
+
+        private static FastMove? Find(Span<FastMove> moves, int from, int to, PieceType promoteTo = PieceType.None)
+        {
+            for (var i = 0; i < moves.Length; i++)
+            {
+                if (moves[i].From == from
+                    && moves[i].To == to
                     && moves[i].PromotionChar == promoteTo.TypeChar())
                 {
                     return moves[i];

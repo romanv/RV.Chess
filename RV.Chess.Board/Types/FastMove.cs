@@ -49,8 +49,7 @@ namespace RV.Chess.Board.Types
         internal static FastMove CreateNull(
             Side side,
             int epBefore = 0,
-            CastlingRights castlingBefore =
-            CastlingRights.None)
+            CastlingRights castlingBefore = CastlingRights.None)
         {
             return new FastMove
             {
