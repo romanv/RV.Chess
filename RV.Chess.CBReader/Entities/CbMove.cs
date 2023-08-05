@@ -13,6 +13,8 @@ namespace RV.Chess.CBReader.Entities
 
         public bool IsNullMove { get; init; }
 
+        public bool IsRootMove { get; init; }
+
         public IAnnotation[] Annotations { get; set; } = Array.Empty<IAnnotation>();
 
         public List<CbMove> Next { get; } = new List<CbMove>();
