@@ -87,6 +87,8 @@ namespace RV.Chess.Board.Types
 
         internal readonly bool IsCastling => Type == MoveType.CastleLong || Type == MoveType.CastleShort;
 
+        internal readonly bool IsDoublePawnMove => Type == MoveType.Pawn && (From - To == 16 || From - To == -16);
+
         internal readonly bool IsPromotion =>
             Type == MoveType.PromoteQ
             || Type == MoveType.PromoteR
@@ -94,6 +96,8 @@ namespace RV.Chess.Board.Types
             || Type == MoveType.PromoteN;
 
         internal readonly PieceType CapturedPiece => (PieceType)(Move >> 19 & 0b111);
+
+        internal readonly PieceType OriginalPiece => IsPromotion ? PieceType.Pawn : Type.ToPieceType();
 
         internal readonly int EpSquareBefore
         {

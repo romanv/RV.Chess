@@ -7,15 +7,36 @@ namespace RV.Chess.Board.Utils
     public static class Zobrist
     {
         internal const uint DefaultPositionHash = 980792291;
+        internal const uint DefaultPositionPieceHash = 1095736904;
 
-        internal static uint GetHash(Chessgame game)
+        internal static uint GetIncrementalHash(Chessgame game)
         {
             uint hash = 0;
+
+            for (var i = 0; i < 64; i++)
+            {
+                var piece = game.Board.GetPieceTypeAt(i);
+                var side = game.Board.GetPieceSideAt(i);
+
+                if (piece != PieceType.None)
+                {
+                    hash ^= GetPieceHash(i, piece, side);
+                }
+            }
+
+            hash ^= GetEnPassantHash(game.EpSquareMask);
 
             if (game.SideToMove == Side.White)
             {
                 hash ^= WhiteTurn;
             }
+
+            return hash;
+        }
+
+        internal static uint GetCastlingHash(Chessgame game)
+        {
+            uint hash = 0;
 
             if (game.CastlingRights.CanCastle(CastlingRights.WhiteKingside))
             {
@@ -36,19 +57,6 @@ namespace RV.Chess.Board.Utils
             {
                 hash ^= Castling[3];
             }
-
-            for (var i = 0; i < 64; i++)
-            {
-                var piece = game.Board.GetPieceTypeAt(i);
-                var side = game.Board.GetPieceSideAt(i);
-
-                if (piece != PieceType.None)
-                {
-                    hash ^= GetPieceHash(i, piece, side);
-                }
-            }
-
-            hash ^= GetEnPassantHash(game.EpSquareMask);
 
             return hash;
         }

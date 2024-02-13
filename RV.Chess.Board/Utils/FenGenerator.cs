@@ -187,7 +187,7 @@ namespace RV.Chess.Board.Utils
             }
 
             game._moveList.Clear();
-            game.Hash = Zobrist.GetHash(game);
+            game._incrementalHash = Zobrist.GetIncrementalHash(game);
 
             return true;
         }

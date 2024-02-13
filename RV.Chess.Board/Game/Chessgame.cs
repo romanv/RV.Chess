@@ -12,6 +12,7 @@ namespace RV.Chess.Board.Game
     public class Chessgame
     {
         internal readonly Stack<FastMove> _moveList = new();
+        internal uint _incrementalHash = Zobrist.DefaultPositionPieceHash;
         private const int MAX_MOVES = 220;
         private readonly DefaultObjectPool<BoardState> _boardsPool = new(new DefaultPooledObjectPolicy<BoardState>());
         private readonly FastMove[] _moves = new FastMove[MAX_MOVES];
@@ -47,7 +48,7 @@ namespace RV.Chess.Board.Game
 
         public List<Move> Moves { get; } = new List<Move>();
 
-        public uint Hash { get; internal set; } = Zobrist.DefaultPositionHash;
+        public uint Hash => _incrementalHash ^ Zobrist.GetCastlingHash(this);
 
         public void ClearBoard()
         {
@@ -164,7 +165,7 @@ namespace RV.Chess.Board.Game
             var last = _moveList.Pop();
             CurrentMoveNumber -= (int)last.Side;
             SideToMove = SideToMove.Opposite();
-            Hash ^= Zobrist.WhiteTurn;
+            _incrementalHash ^= Zobrist.WhiteTurn;
             Moves.RemoveAt(Moves.Count - 1);
 
             if (last.Type == MoveType.Null)
@@ -182,28 +183,33 @@ namespace RV.Chess.Board.Game
                 Board.AddPieceUnsafe(PieceType.Pawn, last.Side.Opposite(), last.EpCaptureTarget);
                 Board.RemovePieceAt(last.To);
                 Board.AddPieceUnsafe(PieceType.Pawn, last.Side, last.From);
-                Hash ^= Zobrist.GetPieceHash(last.EpCaptureTarget, PieceType.Pawn, last.Side.Opposite());
-                Hash ^= Zobrist.GetPieceHash(last.To, last.Type.ToPieceType(), last.Side);
-                Hash ^= Zobrist.GetPieceHash(last.From, PieceType.Pawn, last.Side);
+                _incrementalHash ^= Zobrist.GetPieceHash(last.EpCaptureTarget, PieceType.Pawn, last.Side.Opposite());
+                _incrementalHash ^= Zobrist.GetPieceHash(last.To, PieceType.Pawn, last.Side);
+                _incrementalHash ^= Zobrist.GetPieceHash(last.From, PieceType.Pawn, last.Side);
             }
             else if (last.IsCapture)
             {
                 Board.AddPieceUnsafe(last.CapturedPiece, last.Side.Opposite(), last.To);
-                Hash ^= Zobrist.GetPieceHash(last.To, last.CapturedPiece, last.Side.Opposite());
-                Hash ^= Zobrist.GetPieceHash(last.To, last.PieceAfterMove, last.Side);
-                Hash ^= Zobrist.GetPieceHash(last.From, last.Type.ToPieceType(), last.Side);
+                _incrementalHash ^= Zobrist.GetPieceHash(last.To, last.CapturedPiece, last.Side.Opposite());
+                _incrementalHash ^= Zobrist.GetPieceHash(last.To, last.PieceAfterMove, last.Side);
+                _incrementalHash ^= Zobrist.GetPieceHash(last.From, last.OriginalPiece, last.Side);
             }
             else
             {
                 Board.RemovePieceAt(last.To);
-                Hash ^= Zobrist.GetPieceHash(last.To, last.PieceAfterMove, last.Side);
-                Hash ^= Zobrist.GetPieceHash(last.From, last.Type.ToPieceType(), last.Side);
+                _incrementalHash ^= Zobrist.GetPieceHash(last.To, last.PieceAfterMove, last.Side);
+                _incrementalHash ^= Zobrist.GetPieceHash(last.From, last.OriginalPiece, last.Side);
+            }
+
+            if (last.Type == MoveType.Pawn && last.IsDoublePawnMove)
+            {
+                _incrementalHash ^= Zobrist.GetEnPassantHash(1UL << last.EpCaptureTarget);
             }
 
             var originalMovedPiece = last.IsPromotion ? PieceType.Pawn : last.PieceAfterMove;
             Board.AddPieceUnsafe(originalMovedPiece, last.Side, last.From);
             EpSquareMask = last.EpSquareBefore > 0 ? 1UL << last.EpSquareBefore : 0;
-            Hash ^= Zobrist.GetEnPassantHash(EpSquareMask);
+            _incrementalHash ^= Zobrist.GetEnPassantHash(EpSquareMask);
             CastlingRights |= last.CastlingRightsBefore;
         }
 
@@ -288,7 +294,7 @@ namespace RV.Chess.Board.Game
 
             EpSquareMask = 0;
             SideToMove = SideToMove.Opposite();
-            Hash ^= Zobrist.WhiteTurn;
+            _incrementalHash ^= Zobrist.WhiteTurn;
 
             return nullMove;
         }
@@ -379,32 +385,16 @@ namespace RV.Chess.Board.Game
             Debug.Assert(Board.GetPieceTypeAt(move.CastlingRookFrom) == PieceType.Rook);
             var side = Board.GetPieceSideAt(move.From);
 
-            switch (move.CastlingRookFrom)
-            {
-                case 0:
-                    Hash ^= Zobrist.Castling[1]; // Q
-                    break;
-                case 7:
-                    Hash ^= Zobrist.Castling[0]; // K
-                    break;
-                case 56:
-                    Hash ^= Zobrist.Castling[3]; // q
-                    break;
-                case 63:
-                    Hash ^= Zobrist.Castling[2]; // k
-                    break;
-            }
-
             Board.RemovePieceAt(move.CastlingRookFrom);
             Board.AddPieceUnsafe(PieceType.Rook, side, move.CastlingRookTo);
             Board.RemovePieceAt(move.From);
             Board.AddPieceUnsafe(PieceType.King, side, move.To);
             CastlingRights = CastlingRights.WithoutSide(side);
 
-            Hash ^= Zobrist.GetPieceHash(move.CastlingRookFrom, PieceType.Rook, side);
-            Hash ^= Zobrist.GetPieceHash(move.CastlingRookTo, PieceType.Rook, side);
-            Hash ^= Zobrist.GetPieceHash(move.From, PieceType.King, side);
-            Hash ^= Zobrist.GetPieceHash(move.To, PieceType.King, side);
+            _incrementalHash ^= Zobrist.GetPieceHash(move.CastlingRookFrom, PieceType.Rook, side);
+            _incrementalHash ^= Zobrist.GetPieceHash(move.CastlingRookTo, PieceType.Rook, side);
+            _incrementalHash ^= Zobrist.GetPieceHash(move.From, PieceType.King, side);
+            _incrementalHash ^= Zobrist.GetPieceHash(move.To, PieceType.King, side);
         }
 
         private void UndoCastlingMove(FastMove move)
@@ -414,26 +404,10 @@ namespace RV.Chess.Board.Game
             Board.RemovePieceAt(move.To);
             Board.AddPieceUnsafe(PieceType.King, move.Side, move.From);
 
-            Hash ^= Zobrist.GetPieceHash(move.CastlingRookTo, PieceType.Rook, move.Side);
-            Hash ^= Zobrist.GetPieceHash(move.CastlingRookFrom, PieceType.Rook, move.Side);
-            Hash ^= Zobrist.GetPieceHash(move.From, PieceType.King, move.Side);
-            Hash ^= Zobrist.GetPieceHash(move.To, PieceType.King, move.Side);
-
-            switch (move.CastlingRookFrom)
-            {
-                case 0:
-                    Hash ^= Zobrist.Castling[1]; // Q
-                    break;
-                case 7:
-                    Hash ^= Zobrist.Castling[0]; // K
-                    break;
-                case 56:
-                    Hash ^= Zobrist.Castling[3]; // q
-                    break;
-                case 63:
-                    Hash ^= Zobrist.Castling[2]; // k
-                    break;
-            }
+            _incrementalHash ^= Zobrist.GetPieceHash(move.CastlingRookTo, PieceType.Rook, move.Side);
+            _incrementalHash ^= Zobrist.GetPieceHash(move.CastlingRookFrom, PieceType.Rook, move.Side);
+            _incrementalHash ^= Zobrist.GetPieceHash(move.From, PieceType.King, move.Side);
+            _incrementalHash ^= Zobrist.GetPieceHash(move.To, PieceType.King, move.Side);
         }
 
         private void MakeMoveOnBoard(FastMove move, Span<FastMove> allLegal, bool fillSan)
@@ -441,7 +415,7 @@ namespace RV.Chess.Board.Game
             var pieceType = Board.GetPieceTypeAt(move.From);
             var pieceSide = Board.GetPieceSideAt(move.From);
 
-            Hash ^= Zobrist.GetEnPassantHash(EpSquareMask);
+            _incrementalHash ^= Zobrist.GetEnPassantHash(EpSquareMask);
 
             if (pieceType == PieceType.Pawn)
             {
@@ -451,7 +425,7 @@ namespace RV.Chess.Board.Game
                 if (move.IsEnPassant)
                 {
                     Board.RemovePieceAt(move.EpCaptureTarget);
-                    Hash ^= Zobrist.GetPieceHash(move.EpCaptureTarget, PieceType.Pawn, move.Side.Opposite());
+                    _incrementalHash ^= Zobrist.GetPieceHash(move.EpCaptureTarget, PieceType.Pawn, move.Side.Opposite());
                 }
             }
             else
@@ -459,7 +433,7 @@ namespace RV.Chess.Board.Game
                 EpSquareMask = 0;
             }
 
-            Hash ^= Zobrist.GetEnPassantHash(EpSquareMask);
+            _incrementalHash ^= Zobrist.GetEnPassantHash(EpSquareMask);
 
             if (move.IsCastling)
             {
@@ -482,7 +456,7 @@ namespace RV.Chess.Board.Game
                 {
                     if (!move.IsEnPassant)
                     {
-                        Hash ^= Zobrist.GetPieceHash(move.To, move.CapturedPiece, move.Side.Opposite());
+                        _incrementalHash ^= Zobrist.GetPieceHash(move.To, move.CapturedPiece, move.Side.Opposite());
                     }
 
                     if (Board.GetPieceTypeAt(move.To) == PieceType.Rook)
@@ -493,8 +467,9 @@ namespace RV.Chess.Board.Game
 
                 Board.RemovePieceAt(move.From);
                 Board.AddPieceUnsafe(move.PieceAfterMove, pieceSide, move.To);
-                Hash ^= Zobrist.GetPieceHash(move.From, move.Type.ToPieceType(), move.Side);
-                Hash ^= Zobrist.GetPieceHash(move.To, move.Type.ToPieceType(), move.Side);
+
+                _incrementalHash ^= Zobrist.GetPieceHash(move.From, move.OriginalPiece, move.Side);
+                _incrementalHash ^= Zobrist.GetPieceHash(move.To, move.PieceAfterMove, move.Side);
             }
 
             if (SideToMove == Side.Black)
@@ -503,7 +478,8 @@ namespace RV.Chess.Board.Game
             }
 
             SideToMove = SideToMove.Opposite();
-            Hash ^= Zobrist.WhiteTurn;
+            _incrementalHash ^= Zobrist.WhiteTurn;
+
             _moveList.Push(move);
             var m = Move.FromFastMove(move);
 
