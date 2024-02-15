@@ -107,7 +107,6 @@ namespace RV.Chess.Board.Game
             return IsOccupied(idx);
         }
 
-
 #if DEBUG
         public void Print()
         {
