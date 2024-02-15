@@ -24,7 +24,12 @@ namespace RV.Chess.Board.Game
 
         public Chessgame(string fen)
         {
-            SetFen(fen);
+            var isValidFen = SetFen(fen);
+
+            if (!isValidFen)
+            {
+                throw new InvalidDataException($"Bad FEN: {fen}");
+            }
         }
 
         public CastlingRights CastlingRights { get; internal set; } = CastlingRights.All;
