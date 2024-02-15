@@ -1,5 +1,4 @@
-﻿using System.Runtime.CompilerServices;
-using RV.Chess.Board.Utils;
+﻿using RV.Chess.Board.Utils;
 using RV.Chess.Shared.Types;
 
 namespace RV.Chess.Board.Types
@@ -37,8 +36,8 @@ namespace RV.Chess.Board.Types
                     | to << 6
                     | (int)type << 12
                     | (int)side << 16
-                    | Unsafe.As<bool, int>(ref isCheck) << 17
-                    | Unsafe.As<bool, int>(ref isMate) << 18
+                    | (isCheck ? 1 : 0) << 17
+                    | (isMate ? 1 : 0) << 18
                     | (int)capturedPiece << 19
                     | EncodeEp(epBefore, side) << 22
                     | (int)castlingBefore << 27
