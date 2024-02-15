@@ -37,7 +37,6 @@ namespace RV.Chess.Board.Game
             DEFAULT_ALL,
         };
 
-
         internal ulong[] PieceBoards { get; private set; } = new ulong[]
         {
             0,
