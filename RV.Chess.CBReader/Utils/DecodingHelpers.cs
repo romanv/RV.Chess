@@ -40,6 +40,17 @@ namespace RV.Chess.CBReader.Utils
             };
         }
 
+        internal static int ToIntLittleEndian(this Span<byte> span)
+        {
+            return span.Length switch
+            {
+                1 => span[0],
+                2 => BinaryPrimitives.ReadInt16LittleEndian(span),
+                3 => span[2] << 16 | span[1] << 8 | span[0],
+                _ => BinaryPrimitives.ReadInt32LittleEndian(span),
+            };
+        }
+
         internal static DateOnly ToDate(this Span<byte> span)
         {
             var b = (int)span.ToUIntBigEndian();
