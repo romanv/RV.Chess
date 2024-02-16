@@ -90,6 +90,7 @@ namespace RV.Chess.CBReader.Readers
             }
             catch
             {
+                return Result.Fail($"Malformed guiding text section at {offset}");
             }
 
             return ImmutableList<GuidingTextSection>.Empty;
@@ -176,14 +177,15 @@ namespace RV.Chess.CBReader.Readers
             {
                 var size = version == 1 ? 2 : 4;
                 var language = (TextLanguage)BinaryPrimitives.ReadUInt16LittleEndian(reader.ReadBytes(2));
+                var textLengthBytes = reader.ReadBytes(size);
                 var textLength = size == 2
-                    ? BinaryPrimitives.ReadInt16LittleEndian(reader.ReadBytes(size))
-                    : BinaryPrimitives.ReadInt32LittleEndian(reader.ReadBytes(size));
-                var text = reader.ReadBytes(textLength).AsSpan().ToCBString();
+                    ? BinaryPrimitives.ReadUInt16LittleEndian(textLengthBytes)
+                    : BinaryPrimitives.ReadUInt32LittleEndian(textLengthBytes);
+                var text = textLength > 0 ? reader.ReadBytes((int)textLength).AsSpan().ToCBString() : string.Empty;
                 var formattingSectionLength = size == 2
-                    ? BinaryPrimitives.ReadInt16LittleEndian(reader.ReadBytes(size))
-                    : BinaryPrimitives.ReadInt32LittleEndian(reader.ReadBytes(size));
-                reader.ReadBytes(formattingSectionLength);
+                    ? BinaryPrimitives.ReadUInt16LittleEndian(reader.ReadBytes(size))
+                    : BinaryPrimitives.ReadUInt32LittleEndian(reader.ReadBytes(size));
+                reader.ReadBytes((int)formattingSectionLength);
 
                 return (language, text);
             }
