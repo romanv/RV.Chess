@@ -218,6 +218,19 @@ namespace RV.Chess.Board.Game
             CastlingRights |= last.CastlingRightsBefore;
         }
 
+        public bool HasBoardEqualTo(Chessgame cg)
+        {
+            return Board.PieceBoards[1] == cg.Board.PieceBoards[1]
+                && Board.PieceBoards[2] == cg.Board.PieceBoards[2]
+                && Board.PieceBoards[3] == cg.Board.PieceBoards[3]
+                && Board.PieceBoards[4] == cg.Board.PieceBoards[4]
+                && Board.PieceBoards[5] == cg.Board.PieceBoards[5]
+                && Board.PieceBoards[6] == cg.Board.PieceBoards[6]
+                && Board.Occupied[0] == cg.Board.Occupied[0]
+                && Board.Occupied[1] == cg.Board.Occupied[1]
+                && Board.Occupied[2] == cg.Board.Occupied[2];
+        }
+
         internal Span<FastMove> GenerateMoves() => GenerateMoves(_moves, Board, SideToMove);
 
         internal Span<FastMove> GenerateMoves(
