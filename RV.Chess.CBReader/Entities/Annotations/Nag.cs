@@ -1,6 +1,4 @@
-﻿using System.ComponentModel;
-
-namespace RV.Chess.CBReader.Entities.Annotations
+﻿namespace RV.Chess.CBReader.Entities.Annotations
 {
     enum NagType
     {
@@ -11,67 +9,71 @@ namespace RV.Chess.CBReader.Entities.Annotations
 
     class NagTypeAttribute : Attribute
     {
-        public NagTypeAttribute(NagType type)
+        public NagTypeAttribute(NagType type, string stringValue = "")
         {
             Type = type;
+            StringValue = stringValue;
         }
 
         public NagType Type { get; }
+        public string StringValue { get; }
     }
 
     // https://en.wikipedia.org/wiki/Numeric_Annotation_Glyphs
     public enum Nag
     {
         Null,
-        [NagTypeAttribute(NagType.Comment)]
+        [NagTypeAttribute(NagType.Comment, "!")]
         GoodMove,
-        [NagTypeAttribute(NagType.Comment)]
+        [NagTypeAttribute(NagType.Comment, "?")]
         BadMove,
-        [NagTypeAttribute(NagType.Comment)]
+        [NagTypeAttribute(NagType.Comment, "!!")]
         BrilliantMove,
-        [NagTypeAttribute(NagType.Comment)]
+        [NagTypeAttribute(NagType.Comment, "??")]
         Blunder,
-        [NagTypeAttribute(NagType.Comment)]
+        [NagTypeAttribute(NagType.Comment, "!?")]
         InterestingMove,
-        [NagTypeAttribute(NagType.Comment)]
+        [NagTypeAttribute(NagType.Comment, "?!")]
         DubiousMove,
-        [NagTypeAttribute(NagType.Comment)]
+        [NagTypeAttribute(NagType.Comment, "□")]
         ForcedMove,
         [NagTypeAttribute(NagType.Comment)]
         SingularMove,
         [NagTypeAttribute(NagType.Comment)]
         WorstMove,
-        [NagTypeAttribute(NagType.Eval)]
+        [NagTypeAttribute(NagType.Eval, "=")]
         PositionEven,
         [NagTypeAttribute(NagType.Eval)]
         PositionQuietEqual,
         [NagTypeAttribute(NagType.Eval)]
         PositionActiveEqual,
-        [NagTypeAttribute(NagType.Eval)]
+        [NagTypeAttribute(NagType.Eval, "∞")]
         PositionUnclear,
-        [NagTypeAttribute(NagType.Eval)]
+        [NagTypeAttribute(NagType.Eval, "⩲")]
         WhiteSlightAdvantage,
-        [NagTypeAttribute(NagType.Eval)]
+        [NagTypeAttribute(NagType.Eval, "⩱")]
         BlackSlightAdvantage,
-        [NagTypeAttribute(NagType.Eval)]
+        [NagTypeAttribute(NagType.Eval, "±")]
         WhiteModerateAdvantage,
-        [NagTypeAttribute(NagType.Eval)]
+        [NagTypeAttribute(NagType.Eval, "∓")]
         BlackModerateAdvantage,
-        [NagTypeAttribute(NagType.Eval)]
+        [NagTypeAttribute(NagType.Eval, "+−")]
         WhiteDecisiveAdvantage,
-        [NagTypeAttribute(NagType.Eval)]
+        [NagTypeAttribute(NagType.Eval, "−+")]
         BlackDecisiveAdvantage,
         [NagTypeAttribute(NagType.Eval)]
         WhiteCrushingAdvantage,
         [NagTypeAttribute(NagType.Eval)]
         BlackCrushingAdvantage,
-        [NagTypeAttribute(NagType.Comment)]
+        [NagTypeAttribute(NagType.Comment, "⨀")]
         WhiteZugzwang,
-        [NagTypeAttribute(NagType.Comment)]
+        [NagTypeAttribute(NagType.Comment, "⨀")]
         BlackZugzwang,
         WhiteSlightSpaceAdvantage,
         BlackSlightSpaceAdvantage,
+        [NagTypeAttribute(NagType.Eval, "○")]
         WhiteModerateSpaceAdvantage,
+        [NagTypeAttribute(NagType.Eval, "○")]
         BlackModerateSpaceAdvantage,
         WhiteDecisiveSpaceAdvantage,
         BlackDecisiveSpaceAdvantage,
@@ -79,25 +81,25 @@ namespace RV.Chess.CBReader.Entities.Annotations
         WhiteSlightDevelopmentAdvantage,
         [NagTypeAttribute(NagType.Eval)]
         BlackSlightDevelopmentAdvantage,
-        [NagTypeAttribute(NagType.Eval)]
+        [NagTypeAttribute(NagType.Eval, "⟳")]
         WhiteModerateDevelopmentAdvantage,
-        [NagTypeAttribute(NagType.Eval)]
+        [NagTypeAttribute(NagType.Eval, "⟳")]
         BlackModerateDevelopmentAdvantage,
         [NagTypeAttribute(NagType.Eval)]
         WhiteDecisiveDevelopmentAdvantage,
         [NagTypeAttribute(NagType.Eval)]
         BlackDecisiveDevelopmentAdvantage,
-        [NagTypeAttribute(NagType.Eval)]
+        [NagTypeAttribute(NagType.Eval, "↑")]
         WhiteInitiative,
-        [NagTypeAttribute(NagType.Eval)]
+        [NagTypeAttribute(NagType.Eval, "↑")]
         BlackInitiative,
         [NagTypeAttribute(NagType.Eval)]
         WhiteLastingInitiative,
         [NagTypeAttribute(NagType.Eval)]
         BlackLastingInitiative,
-        [NagTypeAttribute(NagType.Eval)]
+        [NagTypeAttribute(NagType.Eval, "→")]
         WhiteAttack,
-        [NagTypeAttribute(NagType.Eval)]
+        [NagTypeAttribute(NagType.Eval, "→")]
         BlackAttack,
         [NagTypeAttribute(NagType.Eval)]
         WhiteInsufficientCompensation,
@@ -197,9 +199,9 @@ namespace RV.Chess.CBReader.Entities.Annotations
         WhiteSlightCounterplay,
         [NagTypeAttribute(NagType.Eval)]
         BlackSlightCounterplay,
-        [NagTypeAttribute(NagType.Eval)]
+        [NagTypeAttribute(NagType.Eval, "⇆")]
         WhiteModerateCounterplay,
-        [NagTypeAttribute(NagType.Eval)]
+        [NagTypeAttribute(NagType.Eval, "⇆")]
         BlackModerateCounterplay,
         [NagTypeAttribute(NagType.Eval)]
         WhiteDecisiveCounterplay,
