@@ -54,7 +54,7 @@ namespace RV.Chess.Board.Tests
                 var expectedMoves = testCase!["expected"]?.AsArray().Select(m => (string)m!["move"]!);
                 var moves = new Chessgame(startingFen).GetLegalMoves();
                 Assert.Equal(expectedMoves!.Count(), moves.Count);
-                Assert.True(moves.All(m => expectedMoves!.Where(em => em == m.San).Count() == 1));
+                Assert.True(moves.TrueForAll(m => expectedMoves!.Count(em => em == m.San) == 1));
             }
         }
     }

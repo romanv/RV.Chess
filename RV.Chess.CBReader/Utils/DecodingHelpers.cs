@@ -5,7 +5,7 @@ namespace RV.Chess.CBReader.Utils
 {
     internal static class DecodingHelpers
     {
-        internal static Encoding _encoding = Encoding.GetEncoding("ISO-8859-1");
+        private static readonly Encoding _encoding = Encoding.GetEncoding("ISO-8859-1");
 
         internal static uint ToUIntBigEndian(this Span<byte> span)
         {

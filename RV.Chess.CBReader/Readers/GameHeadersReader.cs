@@ -60,7 +60,7 @@ namespace RV.Chess.CBReader.Readers
             _fs.Seek(FILE_HEADER_SIZE + skip * RECORD_SIZE, SeekOrigin.Begin);
             while (readRecords < count && _reader.BaseStream.Position != _reader.BaseStream.Length)
             {
-                CbhRecord? result;
+                Result<CbhRecord>? result;
 
                 try
                 {
@@ -120,9 +120,9 @@ namespace RV.Chess.CBReader.Readers
 
                     readRecords++;
                 }
-                catch
+                catch (Exception ex)
                 {
-                    throw;
+                    result = Result.Fail(ex.Message);
                 }
 
                 if (result == null)

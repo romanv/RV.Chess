@@ -82,12 +82,12 @@ namespace RV.Chess.CBReader.MoveDecoding
                 }
                 else
                 {
-                    if (_pieces[0][2].All(p => p != 0))
+                    if (Array.TrueForAll(_pieces[0][2], p => p != 0))
                     {
                         CastlingRights &= ~CastlingRights.WhiteQueenside;
                     }
 
-                    if (_pieces[0][2].All(p => p != 7))
+                    if (Array.TrueForAll(_pieces[0][2], p => p != 7))
                     {
                         CastlingRights &= ~CastlingRights.WhiteKingside;
                     }
@@ -99,12 +99,12 @@ namespace RV.Chess.CBReader.MoveDecoding
                 }
                 else
                 {
-                    if (_pieces[1][2].All(p => p != 56))
+                    if (Array.TrueForAll(_pieces[1][2], p => p != 56))
                     {
                         CastlingRights &= ~CastlingRights.BlackQueenside;
                     }
 
-                    if (_pieces[1][2].All(p => p != 63))
+                    if (Array.TrueForAll(_pieces[1][2], p => p != 63))
                     {
                         CastlingRights &= ~CastlingRights.BlackKingside;
                     }

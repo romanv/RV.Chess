@@ -35,7 +35,7 @@ namespace RV.Chess.PGN
             {
                 if (move is PgnMoveNode mn)
                 {
-                    if (prv != null && prv is PgnMoveNode prvMoveNode && prvMoveNode.Side == Side.White)
+                    if (prv is PgnMoveNode prvMoveNode && prvMoveNode.Side == Side.White)
                     {
                         sb.Append(mn.San);
                     }

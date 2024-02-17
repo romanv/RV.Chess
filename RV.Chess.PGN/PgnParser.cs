@@ -9,7 +9,7 @@ namespace RV.Chess.PGN
 {
     public class PgnParser : IDisposable
     {
-        private bool _disposed = false;
+        private bool _isDisposed = false;
         private long _gameChunkStart = 0;
         private int _cursor = 0;
         private IPgnReader _reader;
@@ -177,13 +177,13 @@ namespace RV.Chess.PGN
                         break;
                     case '(':
                         // variation starts with the same color as the previous move
-                        side = (moves.Peek().FindLast(m => m is PgnMoveNode mn) as PgnMoveNode)?.Side ?? side;
+                        side = (moves.Peek().FindLast(m => m is PgnMoveNode) as PgnMoveNode)?.Side ?? side;
                         moves.Push(new List<PgnNode>());
                         _cursor++;
                         break;
                     case ')':
                         var variation = moves.Pop();
-                        side = (moves.Peek().FindLast(m => m is PgnMoveNode mn) as PgnMoveNode)?.Side.Opposite() ?? side;
+                        side = (moves.Peek().FindLast(m => m is PgnMoveNode) as PgnMoveNode)?.Side.Opposite() ?? side;
                         moves.Peek().Add(new PgnVariationNode(variation));
                         _cursor++;
                         break;
@@ -231,32 +231,6 @@ namespace RV.Chess.PGN
             }
 
             throw new InvalidDataException($"Unterminated game at {_gameChunkStart}");
-        }
-
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected void Dispose(bool disposing)
-        {
-            if (_disposed)
-            {
-                return;
-            }
-
-            try
-            {
-                if (disposing)
-                {
-                    _reader?.Dispose();
-                }
-            }
-            finally
-            {
-                _disposed = true;
-            }
         }
 
         private PgnAnnotationGlyphNode ReadNagGlyph(ReadOnlySpan<char> text)
@@ -462,9 +436,11 @@ namespace RV.Chess.PGN
                     {
                         _cursor++;
 
+#pragma warning disable S2583 // Conditionally executed code should be reachable
                         return unescape
                             ? Regex.Unescape(text[start..(_cursor - 1)].ToString())
                             : text[start..(_cursor - 1)].ToString();
+#pragma warning restore S2583 // Conditionally executed code should be reachable
                     }
                 }
 
@@ -528,6 +504,31 @@ namespace RV.Chess.PGN
         private static bool IsValidSanCharacter(char c)
         {
             return IsValidSanStartingCharacter(c) || char.IsDigit(c) || c == 'x' || c == '+' || c == '#' || c == '=';
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_isDisposed)
+                return;
+
+            try
+            {
+                if (disposing)
+                {
+                    _reader?.Dispose();
+                }
+            }
+            finally
+            {
+                _isDisposed = true;
+
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

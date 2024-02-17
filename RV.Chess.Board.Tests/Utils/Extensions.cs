@@ -35,7 +35,9 @@
 
         internal static bool All<TSource>(this Span<TSource> source, Func<TSource, bool> predicate)
         {
+#pragma warning disable S6603 // The collection-specific "TrueForAll" method should be used instead of the "All" extension
             return source.ToArray().All(predicate);
+#pragma warning restore S6603 // The collection-specific "TrueForAll" method should be used instead of the "All" extension
         }
     }
 }

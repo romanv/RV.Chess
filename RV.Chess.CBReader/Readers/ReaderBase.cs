@@ -1,15 +1,15 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using System.Text;
 
 namespace RV.Chess.CBReader.Readers
 {
-    abstract class ReaderBase : IDisposable
+    abstract internal class ReaderBase : IDisposable
     {
-        protected readonly string _fileName;
-        internal readonly FileStream? _fs;
-        internal readonly BinaryReader? _reader;
+        internal protected readonly string _fileName;
+        internal protected readonly FileStream? _fs;
+        internal protected readonly BinaryReader? _reader;
+        private bool _disposedValue;
 
-        internal ReaderBase(string fileName)
+        private protected ReaderBase(string fileName)
         {
             _fileName = $"{fileName}.{FILE_EXTENSION}";
 
@@ -22,6 +22,7 @@ namespace RV.Chess.CBReader.Readers
             {
                 IsError = true;
                 ErrorMessage = ex.Message;
+                throw;
             }
         }
 
@@ -33,13 +34,24 @@ namespace RV.Chess.CBReader.Readers
 
         internal string ErrorMessage { get; private set; } = string.Empty;
 
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposedValue)
+            {
+                if (disposing && !IsError)
+                {
+                    _reader.Dispose();
+                    _fs.Dispose();
+                }
+
+                _disposedValue = true;
+            }
+        }
+
         public void Dispose()
         {
-            if (!IsError)
-            {
-                _reader.Dispose();
-                _fs.Dispose();
-            }
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

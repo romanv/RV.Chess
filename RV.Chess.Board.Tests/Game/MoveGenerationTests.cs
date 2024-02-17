@@ -16,7 +16,7 @@ namespace RV.Chess.Board.Tests
         {
             var knightMoves = new Chessgame(fen).GenerateMoves().Where(m => m.Type is MoveType.Knight).ToList();
             Assert.Equal(allowedTargetSquares.Length, knightMoves.Count);
-            Assert.True(allowedTargetSquares.All(ts => knightMoves
+            Assert.True(Array.TrueForAll(allowedTargetSquares, ts => knightMoves
                 .FindIndex(rm => Coordinates.IdxToSquare(rm.From) == sourceSquare
                     && Coordinates.IdxToSquare(rm.To) == ts) > -1));
         }
@@ -76,7 +76,7 @@ namespace RV.Chess.Board.Tests
         {
             var kingMoves = new Chessgame(fen).GenerateMoves().Where(m => m.Type is MoveType.King).ToList();
             Assert.Equal(allowedTargetSquares.Length, kingMoves.Count);
-            Assert.True(allowedTargetSquares.All(ts => kingMoves
+            Assert.True(Array.TrueForAll(allowedTargetSquares, ts => kingMoves
                 .FindIndex(rm => Coordinates.IdxToSquare(rm.To) == ts) > -1));
         }
 
@@ -90,7 +90,7 @@ namespace RV.Chess.Board.Tests
         {
             var kingMoves = new Chessgame(fen).GenerateMoves().Where(m => m.Type is MoveType.King).ToList();
             Assert.Equal(allowedTargetSquares.Length, kingMoves.Count);
-            Assert.True(allowedTargetSquares.All(ts => kingMoves
+            Assert.True(Array.TrueForAll(allowedTargetSquares, ts => kingMoves
                 .FindIndex(rm => Coordinates.IdxToSquare(rm.From) == sourceSquare
                     && Coordinates.IdxToSquare(rm.To) == ts) > -1));
         }
@@ -107,7 +107,7 @@ namespace RV.Chess.Board.Tests
             var castlingMoves = new Chessgame(fen).GenerateMoves()
                 .Where(m => m.Type == MoveType.CastleShort || m.Type == MoveType.CastleLong).ToList();
             Assert.Equal(allowedTargetSquares.Length, castlingMoves.Count);
-            Assert.True(allowedTargetSquares.All(ts => castlingMoves
+            Assert.True(Array.TrueForAll(allowedTargetSquares, ts => castlingMoves
                 .FindIndex(rm => Coordinates.IdxToSquare(rm.From) == sourceSquare
                     && Coordinates.IdxToSquare(rm.To) == ts) > -1));
         }
@@ -195,7 +195,7 @@ namespace RV.Chess.Board.Tests
         {
             var rookMoves = new Chessgame(fen).GenerateMoves().Where(m => m.Type is MoveType.Rook).ToList();
             Assert.Equal(allowedTargetSquares.Length, rookMoves.Count);
-            Assert.True(allowedTargetSquares.All(ts => rookMoves
+            Assert.True(Array.TrueForAll(allowedTargetSquares, ts => rookMoves
                 .FindIndex(rm => Coordinates.IdxToSquare(rm.From) == sourceSquare
                     && Coordinates.IdxToSquare(rm.To) == ts) > -1));
         }
@@ -219,7 +219,7 @@ namespace RV.Chess.Board.Tests
         {
             var bishopMoves = new Chessgame(fen).GenerateMoves().Where(m => m.Type is MoveType.Bishop).ToList();
             Assert.Equal(allowedTargetSquares.Length, bishopMoves.Count);
-            Assert.True(allowedTargetSquares.All(ts => bishopMoves
+            Assert.True(Array.TrueForAll(allowedTargetSquares, ts => bishopMoves
                 .FindIndex(rm => Coordinates.IdxToSquare(rm.To) == ts) > -1));
         }
 
@@ -232,7 +232,7 @@ namespace RV.Chess.Board.Tests
         {
             var queenMoves = new Chessgame(fen).GenerateMoves().Where(m => m.Type is MoveType.Queen).ToList();
             Assert.Equal(allowedTargetSquares.Length, queenMoves.Count);
-            Assert.True(allowedTargetSquares.All(ts => queenMoves
+            Assert.True(Array.TrueForAll(allowedTargetSquares, ts => queenMoves
                 .FindIndex(rm => Coordinates.IdxToSquare(rm.To) == ts) > -1));
         }
 
@@ -253,8 +253,8 @@ namespace RV.Chess.Board.Tests
             var knightMoves = new Chessgame("r1bqk2r/ppp2ppp/2nb4/1B3n2/4Q3/2N2N2/PPP2PPP/R1B1K2R b KQkq - 7 10")
                 .GenerateMoves().Where(m => m.Type is MoveType.Knight).ToList();
             Assert.Single(knightMoves);
-            Assert.Equal("f5", Coordinates.IdxToSquare(knightMoves.First().From));
-            Assert.Equal("e7", Coordinates.IdxToSquare(knightMoves.First().To));
+            Assert.Equal("f5", Coordinates.IdxToSquare(knightMoves[0].From));
+            Assert.Equal("e7", Coordinates.IdxToSquare(knightMoves[0].To));
         }
 
         [Theory]
@@ -275,7 +275,7 @@ namespace RV.Chess.Board.Tests
         {
             var pawnMoves = new Chessgame(fen).GenerateMoves().Where(m => m.Type is MoveType.Pawn).ToList();
             Assert.Equal(allowedTargetSquares.Length, pawnMoves.Count);
-            Assert.True(allowedTargetSquares.All(ts => pawnMoves
+            Assert.True(Array.TrueForAll(allowedTargetSquares, ts => pawnMoves
                 .FindIndex(rm => Coordinates.IdxToSquare(rm.To) == ts) > -1));
         }
 
@@ -327,7 +327,7 @@ namespace RV.Chess.Board.Tests
         {
             var moves = new Chessgame(fen).GenerateMoves().ToList();
             Assert.Equal(targets.Length, moves.Count);
-            Assert.True(targets.All(ts => moves
+            Assert.True(Array.TrueForAll(targets, ts => moves
                 .FindIndex(rm => rm.Type == MoveType.King && Coordinates.IdxToSquare(rm.To) == ts) > -1));
         }
 
@@ -347,8 +347,8 @@ namespace RV.Chess.Board.Tests
         public void Checks_Rook_CanBlockOrCapture(string fen, string[] targets)
         {
             var moves = new Chessgame(fen).GenerateMoves().ToList();
-            Assert.Equal(targets.Length, moves.Where(m => m.Type == MoveType.Rook).Count());
-            Assert.True(targets.All(ts => moves
+            Assert.Equal(targets.Length, moves.Count(m => m.Type == MoveType.Rook));
+            Assert.True(Array.TrueForAll(targets, ts => moves
                 .FindIndex(rm => rm.Type == MoveType.Rook && Coordinates.IdxToSquare(rm.To) == ts) > -1));
         }
 
@@ -358,8 +358,8 @@ namespace RV.Chess.Board.Tests
         public void Checks_Bishop_CanBlockOrCapture(string fen, string[] targets)
         {
             var moves = new Chessgame(fen).GenerateMoves().ToList();
-            Assert.Equal(targets.Length, moves.Where(m => m.Type == MoveType.Bishop).Count());
-            Assert.True(targets.All(ts => moves
+            Assert.Equal(targets.Length, moves.Count(m => m.Type == MoveType.Bishop));
+            Assert.True(Array.TrueForAll(targets, ts => moves
                 .FindIndex(rm => rm.Type == MoveType.Bishop && Coordinates.IdxToSquare(rm.To) == ts) > -1));
         }
 
@@ -369,8 +369,8 @@ namespace RV.Chess.Board.Tests
         public void Checks_Knight_CanBlockOrCapture(string fen, string[] targets)
         {
             var moves = new Chessgame(fen).GenerateMoves().ToList();
-            Assert.Equal(targets.Length, moves.Where(m => m.Type == MoveType.Knight).Count());
-            Assert.True(targets.All(ts => moves
+            Assert.Equal(targets.Length, moves.Count(m => m.Type == MoveType.Knight));
+            Assert.True(Array.TrueForAll(targets, ts => moves
                 .FindIndex(rm => rm.Type == MoveType.Knight && Coordinates.IdxToSquare(rm.To) == ts) > -1));
         }
 
@@ -382,8 +382,8 @@ namespace RV.Chess.Board.Tests
         public void Checks_Pawns_CanBlockOrCapture(string fen, string[] targets)
         {
             var moves = new Chessgame(fen).GenerateMoves().ToList();
-            Assert.Equal(targets.Length, moves.Where(m => m.Type == MoveType.Pawn).Count());
-            Assert.True(targets.All(ts => moves
+            Assert.Equal(targets.Length, moves.Count(m => m.Type == MoveType.Pawn));
+            Assert.True(Array.TrueForAll(targets, ts => moves
                 .FindIndex(rm => rm.Type == MoveType.Pawn && Coordinates.IdxToSquare(rm.To) == ts) > -1));
         }
 
@@ -393,8 +393,8 @@ namespace RV.Chess.Board.Tests
         public void Checks_Pawns_CanCaptureCheckerPawnEnPassant(string fen, string[] targets)
         {
             var moves = new Chessgame(fen).GenerateMoves().ToList();
-            Assert.Equal(targets.Length, moves.Where(m => m.Type == MoveType.Pawn).Count());
-            Assert.True(targets.All(ts => moves
+            Assert.Equal(targets.Length, moves.Count(m => m.Type == MoveType.Pawn));
+            Assert.True(Array.TrueForAll(targets, ts => moves
                 .FindIndex(rm => rm.Type == MoveType.Pawn && Coordinates.IdxToSquare(rm.To) == ts) > -1));
         }
 
@@ -404,8 +404,8 @@ namespace RV.Chess.Board.Tests
         public void Checks_Queen_CanBlockOrCapture(string fen, string[] targets)
         {
             var moves = new Chessgame(fen).GenerateMoves().ToList();
-            Assert.Equal(targets.Length, moves.Where(m => m.Type == MoveType.Queen).Count());
-            Assert.True(targets.All(ts => moves
+            Assert.Equal(targets.Length, moves.Count(m => m.Type == MoveType.Queen));
+            Assert.True(Array.TrueForAll(targets, ts => moves
                 .FindIndex(rm => rm.Type == MoveType.Queen && Coordinates.IdxToSquare(rm.To) == ts) > -1));
         }
 
@@ -416,7 +416,7 @@ namespace RV.Chess.Board.Tests
         {
             var moves = new Chessgame(fen).GenerateMoves().ToList();
             Assert.Equal(allowedTargetSquares.Length, moves.Count);
-            Assert.True(allowedTargetSquares.All(ts => moves
+            Assert.True(Array.TrueForAll(allowedTargetSquares, ts => moves
                 .FindIndex(rm => Coordinates.IdxToSquare(rm.From) == sourceSquare
                     && Coordinates.IdxToSquare(rm.To) == ts) > -1));
         }

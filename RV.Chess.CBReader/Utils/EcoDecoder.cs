@@ -22,36 +22,29 @@ namespace RV.Chess.CBReader.Utils
 
         internal static (string, string)[] LoadEcos()
         {
-            try
+            using var stream = Assembly.GetExecutingAssembly()
+                .GetManifestResourceStream("RV.Chess.CBReader.Resources.ECO.csv");
+            if (stream == null)
             {
-                using var stream = Assembly.GetExecutingAssembly()
-                    .GetManifestResourceStream("RV.Chess.CBReader.Resources.ECO.csv");
-                if (stream == null)
+                return Array.Empty<(string, string)>();
+            }
+            using (var reader = new StreamReader(stream))
+            {
+                var line = string.Empty;
+                var ecos = new List<(string, string)>(500);
+                while ((line = reader.ReadLine()) != null)
                 {
-                    return Array.Empty<(string, string)>();
-                }
-                using (var reader = new StreamReader(stream))
-                {
-                    var line = string.Empty;
-                    var ecos = new List<(string, string)>(500);
-                    while ((line = reader.ReadLine()) != null)
+                    var parts = line.Split(',');
+                    if (parts.Length >= 2)
                     {
-                        var parts = line.Split(',');
-                        if (parts?.Length >= 2)
-                        {
-                            ecos.Add((parts[0], parts[1]));
-                        }
+                        ecos.Add((parts[0], parts[1]));
                     }
-
-                    return ecos.ToArray();
                 }
 
-                throw new InvalidDataException("Missing ECO code resource");
+                return ecos.ToArray();
             }
-            catch
-            {
-                throw;
-            }
+
+            throw new InvalidDataException("Missing ECO code resource");
         }
     }
 }

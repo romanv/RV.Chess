@@ -1,6 +1,6 @@
 ﻿namespace RV.Chess.Board.Utils
 {
-    internal class InvalidMoveException : Exception
+    public class InvalidMoveException : Exception
     {
         public InvalidMoveException(string message) : base(message) { }
 

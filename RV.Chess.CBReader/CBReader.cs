@@ -9,25 +9,23 @@ namespace RV.Chess.CBReader
     public class CBReader
     {
         private static readonly string[] _fileExtensions = new string[] { "cbh", "cbp" };
-        private readonly string _dbDirectory;
-        private readonly string _dbName;
-        private readonly string _dbPathNoExtension;
         private readonly GameHeadersReader? _gameReader;
         private readonly PlayerDataReader? _playerReader;
         private readonly MovesReader _movesReader;
         private readonly AnnotationsReader _annotationsReader;
         private readonly TopGamesReader _topGamesReader;
+        private readonly PositionSearchBoosterReader _positionSearchBoosterReader;
+        private readonly EntitySearchIndexBoosterReader _entitySearchIndexBoosterReader;
+        private readonly GameIdsBoosterReader _gameIdsBoosterReader;
 
         private CBReader(string dbDirectory, string dbName)
         {
-            _dbDirectory = dbDirectory;
-            _dbName = dbName;
-            _dbPathNoExtension = Path.Combine(dbDirectory, dbName);
+            var dbPathNoExtension = Path.Combine(dbDirectory, dbName);
 
-            _playerReader = new PlayerDataReader(_dbPathNoExtension);
-            _annotationsReader = new AnnotationsReader(_dbPathNoExtension);
-            _movesReader = new MovesReader(_dbPathNoExtension, _annotationsReader);
-            _topGamesReader = new TopGamesReader(_dbPathNoExtension);
+            _playerReader = new PlayerDataReader(dbPathNoExtension);
+            _annotationsReader = new AnnotationsReader(dbPathNoExtension);
+            _movesReader = new MovesReader(dbPathNoExtension, _annotationsReader);
+            _topGamesReader = new TopGamesReader(dbPathNoExtension);
 
             if (_playerReader.IsError || _movesReader.IsError || _annotationsReader.IsError || _topGamesReader.IsError)
             {
@@ -36,7 +34,7 @@ namespace RV.Chess.CBReader
                 return;
             }
 
-            _gameReader = new GameHeadersReader(_dbPathNoExtension, _playerReader, _movesReader);
+            _gameReader = new GameHeadersReader(dbPathNoExtension, _playerReader, _movesReader);
 
             if (_gameReader.IsError)
             {
@@ -70,7 +68,7 @@ namespace RV.Chess.CBReader
 
             var dbFileName = Path.GetFileNameWithoutExtension(dbFilePath);
 
-            var missingFile = _fileExtensions.FirstOrDefault(ext =>
+            var missingFile = Array.Find(_fileExtensions, ext =>
                 !File.Exists(Path.Combine(dbDirectory, $"{dbFileName}.{ext}")));
 
             return missingFile == null

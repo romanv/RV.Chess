@@ -72,8 +72,8 @@ namespace RV.Chess.Board.Utils
                 fen.Append($" {clock}");
             }
             else
-                fen.Append($" 0");
             {
+                fen.Append($" 0");
             }
 
             fen.Append($" {game.CurrentMoveNumber}");
@@ -120,7 +120,7 @@ namespace RV.Chess.Board.Utils
                         break;
                     default:
                         return false;
-                };
+                }
 
                 pos++;
             }

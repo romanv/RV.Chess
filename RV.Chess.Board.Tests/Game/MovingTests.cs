@@ -64,7 +64,7 @@ namespace RV.Chess.Board.Tests
         public void Promotions_BySan_PromotesToCorrectPiece(string fen, string san, string fenAfter)
         {
             var game = new Chessgame(fen);
-            var move = game.GetLegalMoves().FirstOrDefault(m => m.San == san);
+            var move = game.GetLegalMoves().Find(m => m.San == san);
             game.TryMakeMove(move!);
             Assert.Equal(game.Fen, fenAfter);
         }

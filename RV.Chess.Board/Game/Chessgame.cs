@@ -558,8 +558,8 @@ namespace RV.Chess.Board.Game
 
                     // other captures are already checked durung the move generation phase
                     var ownKingExposedAfterMove = moves[i].IsEnPassant
-                        ? Movement.IsSquareAttacked(branchBoard.GetOwnKingSquare(sideToMove), sideToMove.Opposite(), branchBoard)
-                        : false;
+                        && Movement.IsSquareAttacked(
+                            branchBoard.GetOwnKingSquare(sideToMove), sideToMove.Opposite(), branchBoard);
 
                     if (ownKingExposedAfterMove)
                     {

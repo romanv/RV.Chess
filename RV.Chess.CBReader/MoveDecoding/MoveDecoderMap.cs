@@ -2,7 +2,7 @@
 {
     internal static class MoveDecoderMap
     {
-        internal static Dictionary<byte, MoveOperation> Operations = new()
+        internal static readonly Dictionary<byte, MoveOperation> Operations = new()
         {
             { 0, new MoveOperation(MoveType.Null, 0, 0, 0) },
 

@@ -71,6 +71,7 @@ namespace RV.Chess.CBReader.MoveDecoding
 
                 if (isMultiMove)
                 {
+#pragma warning disable S2583 // Conditionally executed code should be reachable
                     if (multiCodeByteOne == null)
                     {
                         multiCodeByteOne = operationCode;
@@ -96,6 +97,7 @@ namespace RV.Chess.CBReader.MoveDecoding
                         moveCount++;
                         sideToMove = sideToMove.Opposite();
                     }
+#pragma warning restore S2583 // Conditionally executed code should be reachable
                 }
                 else if (MoveDecoderMap.Operations.TryGetValue(operationCode, out var op))
                 {

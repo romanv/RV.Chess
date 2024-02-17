@@ -186,9 +186,9 @@ namespace RV.Chess.Board.Types
             Move |= 2147483648;
         }
 
-        public override readonly bool Equals(object? other)
+        public override readonly bool Equals(object? obj)
         {
-            if (other is FastMove fm)
+            if (obj is FastMove fm)
             {
                 return Equals(fm);
             }

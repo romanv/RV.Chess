@@ -10,7 +10,7 @@ namespace RV.Chess.PGN
             Moves = moves.ToList();
         }
 
-        public List<PgnNode> Moves { get; private set; } = new List<PgnNode>();
+        public List<PgnNode> Moves { get; private set; }
 
         public string Movetext
         {
@@ -23,7 +23,7 @@ namespace RV.Chess.PGN
                     if (Moves[i] is PgnMoveNode m)
                     {
                         // print number for all white's moves, first move in the game / variation and first move after the variation
-                        var shouldPrintNumber = i == 0 || m.Side == Side.White || i > 0 && Moves[i - 1] is PgnVariationNode;
+                        var shouldPrintNumber = i == 0 || m.Side == Side.White || Moves[i - 1] is PgnVariationNode;
 
                         if (shouldPrintNumber)
                         {

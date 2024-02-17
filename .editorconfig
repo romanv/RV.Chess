@@ -203,3 +203,9 @@ csharp_preserve_single_line_statements = true
 
 # IDE0060: Remove unused parameter
 dotnet_diagnostic.IDE0060.severity = warning
+
+# Sonarlint analyzers
+dotnet_diagnostic.S2344.severity = none
+dotnet_diagnostic.S3626.severity = none
+dotnet_diagnostic.S3358.severity = none
+dotnet_diagnostic.S4035.severity = none

@@ -40,7 +40,7 @@ namespace RV.PGNParser.Tests
         {
             using var parser = PgnParser.FromString(text);
             var game = parser.GetGames().First().Value;
-            var terminator = game.Moves.Last();
+            var terminator = game.Moves[^1];
             Assert.IsType<PgnTerminatorNode>(terminator);
             Assert.Equal(expectedResult, ((PgnTerminatorNode)terminator).Terminator);
         }
@@ -75,8 +75,8 @@ namespace RV.PGNParser.Tests
         {
             using var parser = PgnParser.FromString("(1. b3 O-O-O) *");
             var moves = parser.GetGames().First().Value.Moves;
-            Assert.IsType<PgnVariationNode>(moves.First());
-            Assert.Equal("1...O-O-O", (moves.First() as PgnVariationNode)?.Moves[1].ToString());
+            Assert.IsType<PgnVariationNode>(moves[0]);
+            Assert.Equal("1...O-O-O", (moves[0] as PgnVariationNode)?.Moves[1].ToString());
         }
 
         [Theory]
@@ -99,7 +99,7 @@ namespace RV.PGNParser.Tests
         internal void MoveNumber_Valid(string text, int moveNo)
         {
             using var parser = PgnParser.FromString(text);
-            var move = parser.GetGames().First().Value.Moves.First();
+            var move = parser.GetGames().First().Value.Moves[0];
             Assert.Equal(moveNo, (move as PgnMoveNode)?.MoveNumber);
         }
 
@@ -179,7 +179,7 @@ namespace RV.PGNParser.Tests
             var moves = parser.GetGames().First().Value.Moves;
             var rav = moves.SingleOrDefault(n => n is PgnVariationNode);
             Assert.Equal(Side.Black, (moves[5] as PgnMoveNode)?.Side);
-            Assert.Equal(Side.Black, ((rav as PgnVariationNode)?.Moves.First() as PgnMoveNode)?.Side);
+            Assert.Equal(Side.Black, ((rav as PgnVariationNode)?.Moves[0] as PgnMoveNode)?.Side);
         }
 
         [Fact]

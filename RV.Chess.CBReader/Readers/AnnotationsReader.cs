@@ -46,10 +46,7 @@ namespace RV.Chess.CBReader.Readers
             _fs.Seek(offset, SeekOrigin.Begin);
 
             var recordHeader = _reader.ReadBytes(GAME_RECORD_HEADER_SIZE).AsSpan();
-            var gameId = recordHeader[..3].ToUIntBigEndian();
             var count = recordHeader.Slice(7, 3).ToUIntBigEndian() - 1;
-            var blockLength = recordHeader.Slice(10, 4).ToUIntBigEndian();
-            var recordEndPos = _reader.BaseStream.Position - GAME_RECORD_HEADER_SIZE + blockLength;
             var annotations = new Dictionary<int, List<IAnnotation>>();
 
             for (var i = 0; i < count; i++)
@@ -58,7 +55,6 @@ namespace RV.Chess.CBReader.Readers
                 var posNo = aHeader[..3].ToIntBigEndian();
                 var type = aHeader.Slice(3, 1)[0];
                 var length = aHeader.Slice(4, 2).ToUIntBigEndian() - 6;
-                var next = _reader.BaseStream.Position + length;
 
                 if (!annotations.ContainsKey(posNo))
                 {
@@ -83,7 +79,7 @@ namespace RV.Chess.CBReader.Readers
         {
             var decoder = Activator.CreateInstance(annotationType);
 
-            if (decoder != null && decoder is IAnnotation ad)
+            if (decoder is IAnnotation ad)
             {
                 return ad.Decode(reader, length, posNo);
             }
