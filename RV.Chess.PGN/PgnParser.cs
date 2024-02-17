@@ -95,7 +95,6 @@ namespace RV.Chess.PGN
             }
 
             _reader.Reset();
-            yield break;
         }
 
         private PgnGame ParseGame(ReadOnlySpan<char> text, bool useLaxTagParsing)

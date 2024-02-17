@@ -66,7 +66,7 @@ namespace RV.Chess.PGN.Tree
                 id = lastId + 1;
             }
 
-            if (rootNodes == null)
+            if (rootNodes.Count == 0)
             {
                 throw new InvalidDataException("Tree is empty");
             }
@@ -121,7 +121,7 @@ namespace RV.Chess.PGN.Tree
             foreach (var newRoot in branches)
             {
                 var currNewBranchNode = newRoot;
-                var sameMove = target.FirstOrDefault(m => m.San == newRoot.San);
+                var sameMove = target.Find(m => m.San == newRoot.San);
 
                 if (sameMove != null)
                 {

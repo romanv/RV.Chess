@@ -18,12 +18,15 @@ namespace RV.Chess.PGN.Tree
 
         public List<string> Comments { get; set; } = new();
 
+        public override string ToString() => Side == Side.White ? $"{MoveNumber}.{San}" : $"{MoveNumber}...{San}";
+
         public bool Equals(ChessTreeMove? other)
         {
-            return San == other?.San && Side == other?.Side && MoveNumber == other?.MoveNumber;
-        }
+            if (other == null)
+                return false;
 
-        public override string ToString() => Side == Side.White ? $"{MoveNumber}.{San}" : $"{MoveNumber}...{San}";
+            return San == other.San && Side == other.Side && MoveNumber == other.MoveNumber;
+        }
 
         public override bool Equals(object? obj)
         {

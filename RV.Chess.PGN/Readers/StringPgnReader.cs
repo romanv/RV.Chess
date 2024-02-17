@@ -5,14 +5,13 @@ namespace RV.Chess.PGN.Readers
 {
     internal class StringPgnReader : IPgnReader
     {
+        private bool _disposedValue;
         private int _previousChunkStart = 0;
         private string _s = string.Empty;
 
         public int Col { get; private set; }
 
         public int Row { get; private set; }
-
-        public void Dispose() { }
 
         public bool TryGetGameChunk([NotNullWhen(true)] out PgnGameChunk chunk)
         {
@@ -167,6 +166,20 @@ namespace RV.Chess.PGN.Readers
         public void Reset()
         {
             _previousChunkStart = 0;
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposedValue)
+            {
+                _disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

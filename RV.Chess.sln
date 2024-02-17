@@ -17,7 +17,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RV.Chess.CBReader", "RV.Che
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RV.Chess.CBReader.Console", "RV.Chess.CBReader.Console\RV.Chess.CBReader.Console.csproj", "{5CA22EE0-0553-43D2-80B3-4032F5AD70FF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RV.Chess.Shared", "RV.Chess.Shared\RV.Chess.Shared.csproj", "{1348BF90-684A-45D9-8415-7BF699C580D6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RV.Chess.Shared", "RV.Chess.Shared\RV.Chess.Shared.csproj", "{1348BF90-684A-45D9-8415-7BF699C580D6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -13,16 +13,15 @@ namespace RV.Chess.CBReader.Readers
         }
 
         // https://github.com/Yarin78/morphy/blob/master/morphy-cbh/docs/cbh-format/games.md#flags
-        internal Result<HashSet<uint>> Read(uint count)
+        internal IEnumerable<Result<uint>> Read(uint count)
         {
             if (IsError)
             {
-                return Result.Fail(ErrorMessage);
+                throw new InvalidOperationException(ErrorMessage);
             }
 
             _fs.Seek(FILE_HEADER_SIZE, SeekOrigin.Begin);
 
-            var result = new HashSet<uint>();
             var currGameId = -1;
             var topGamesFound = 0;
 
@@ -36,16 +35,14 @@ namespace RV.Chess.CBReader.Readers
 
                     if (isRated && (gamesBlock & 0b1) > 0)
                     {
-                        result.Add((uint)currGameId);
                         topGamesFound++;
+                        yield return (uint)currGameId;
                     }
 
                     gamesBlock >>= 2;
                     currGameId += 1;
                 }
             }
-
-            return result;
         }
     }
 }

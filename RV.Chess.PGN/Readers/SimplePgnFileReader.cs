@@ -14,14 +14,9 @@ namespace RV.Chess.PGN.Readers
         private int _frameEnd = 0;
         private int _position = 0;
         private bool _isAtEnd = false;
+        private bool _disposedValue;
 
         private SimplePgnFileReader() { }
-
-        public void Dispose()
-        {
-            _sr?.Dispose();
-            _fs?.Dispose();
-        }
 
         public bool TryGetGameChunk(out PgnGameChunk chunk)
         {
@@ -93,26 +88,20 @@ namespace RV.Chess.PGN.Readers
                 throw new ArgumentException("File does not exist");
             }
 
-            var reader = new SimplePgnFileReader();
-
-            try
+            var reader = new SimplePgnFileReader
             {
-                reader._fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                reader._sr = new StreamReader(reader._fs, Encoding.UTF8);
-                reader.FillBuffer();
-                return reader;
-            }
-            catch
-            {
-                throw;
-            }
+                _fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)
+            };
+            reader._sr = new StreamReader(reader._fs, Encoding.UTF8);
+            reader.FillBuffer();
+            return reader;
         }
 
-        private int FillBuffer()
+        private void FillBuffer()
         {
             if (_sr == null)
             {
-                return 0;
+                return;
             }
 
             var frameSize = _frameEnd - _frameStart;
@@ -127,7 +116,7 @@ namespace RV.Chess.PGN.Readers
                 _isAtEnd = true;
             }
 
-            return charsRead;
+            return;
         }
 
         public void Reset()
@@ -138,6 +127,26 @@ namespace RV.Chess.PGN.Readers
             _position = 0;
             _isAtEnd = false;
             FillBuffer();
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposedValue)
+            {
+                if (disposing)
+                {
+                    _sr?.Dispose();
+                    _fs?.Dispose();
+                }
+
+                _disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

@@ -1,6 +1,7 @@
-﻿using System.Collections.Immutable;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 using FluentResults;
+using RV.Chess.Board.Game;
+using RV.Chess.Board.Utils;
 using RV.Chess.CBReader.Entities;
 using RV.Chess.CBReader.Readers;
 
@@ -9,45 +10,46 @@ namespace RV.Chess.CBReader
     public class CBReader
     {
         private static readonly string[] _fileExtensions = new string[] { "cbh", "cbp" };
-        private readonly GameHeadersReader? _gameReader;
+
+        private readonly GameHeadersReader? _headersReader;
         private readonly PlayerDataReader? _playerReader;
-        private readonly MovesReader _movesReader;
-        private readonly AnnotationsReader _annotationsReader;
-        private readonly TopGamesReader _topGamesReader;
-        private readonly PositionSearchBoosterReader _positionSearchBoosterReader;
-        private readonly EntitySearchIndexBoosterReader _entitySearchIndexBoosterReader;
-        private readonly GameIdsBoosterReader _gameIdsBoosterReader;
+        private readonly MovesReader? _movesReader;
+        private readonly AnnotationsReader? _annotationsReader;
+        private readonly TopGamesReader? _topGamesReader;
+        private readonly PositionSearchBoosterReader? _positionSearchBoosterReader;
+        private readonly EntitySearchIndexBoosterReader? _entitySearchIndexBoosterReader;
 
         private CBReader(string dbDirectory, string dbName)
         {
             var dbPathNoExtension = Path.Combine(dbDirectory, dbName);
 
-            _playerReader = new PlayerDataReader(dbPathNoExtension);
-            _annotationsReader = new AnnotationsReader(dbPathNoExtension);
-            _movesReader = new MovesReader(dbPathNoExtension, _annotationsReader);
-            _topGamesReader = new TopGamesReader(dbPathNoExtension);
-
-            if (_playerReader.IsError || _movesReader.IsError || _annotationsReader.IsError || _topGamesReader.IsError)
+            try
             {
-                IsError = true;
-                ErrorMessage = "Initialization error";
-                return;
+                _playerReader = new PlayerDataReader(dbPathNoExtension);
+                _annotationsReader = new AnnotationsReader(dbPathNoExtension);
+                _movesReader = new MovesReader(dbPathNoExtension, _annotationsReader);
+                _topGamesReader = new TopGamesReader(dbPathNoExtension);
+                _positionSearchBoosterReader = new PositionSearchBoosterReader(dbPathNoExtension);
+                var gameIdsBoosterReader = new GameIdsBoosterReader(dbPathNoExtension);
+                _entitySearchIndexBoosterReader =
+                    new EntitySearchIndexBoosterReader(dbPathNoExtension, gameIdsBoosterReader);
+                _headersReader = new GameHeadersReader(dbPathNoExtension, _playerReader, _movesReader);
             }
-
-            _gameReader = new GameHeadersReader(dbPathNoExtension, _playerReader, _movesReader);
-
-            if (_gameReader.IsError)
+            catch (Exception ex)
             {
                 IsError = true;
-                ErrorMessage = _gameReader.ErrorMessage;
+                ErrorMessage = ex.Message;
+                return;
             }
         }
 
+        [MemberNotNullWhen(returnValue: false, nameof(_headersReader))]
         [MemberNotNullWhen(returnValue: false, nameof(_playerReader))]
-        [MemberNotNullWhen(returnValue: false, nameof(_gameReader))]
         [MemberNotNullWhen(returnValue: false, nameof(_movesReader))]
         [MemberNotNullWhen(returnValue: false, nameof(_annotationsReader))]
         [MemberNotNullWhen(returnValue: false, nameof(_topGamesReader))]
+        [MemberNotNullWhen(returnValue: false, nameof(_positionSearchBoosterReader))]
+        [MemberNotNullWhen(returnValue: false, nameof(_entitySearchIndexBoosterReader))]
         public bool IsError { get; private set; }
 
         public string ErrorMessage { get; private set; } = string.Empty;
@@ -76,13 +78,16 @@ namespace RV.Chess.CBReader
                 : Result.Fail($"{dbFileName}.{missingFile} is missing");
         }
 
-        public Result<IImmutableList<Result<CbhRecord>>> GetCbhRecords()
+        public Result<IEnumerable<Result<PlayerRecord>>> GetAllPlayers()
         {
+            if (IsError)
+            {
+                return Result.Fail(ErrorMessage);
+            }
+
             try
             {
-                return IsError
-                    ? Result.Fail(ErrorMessage)
-                    : _gameReader.Read(0, int.MaxValue).ToImmutableList();
+                return Result.Ok(_playerReader.GetAll());
             }
             catch (Exception ex)
             {
@@ -90,13 +95,16 @@ namespace RV.Chess.CBReader
             }
         }
 
-        public Result<IImmutableList<Result<CbhRecord>>> GetGameHeaders()
+        public Result<IEnumerable<Result<uint>>> GetGamesByPlayer(uint id)
         {
+            if (IsError)
+            {
+                return Result.Fail(ErrorMessage);
+            }
+
             try
             {
-                return IsError
-                    ? Result.Fail(ErrorMessage)
-                    : _gameReader.Read(0, int.MaxValue).ToImmutableList();
+                return Result.Ok(_entitySearchIndexBoosterReader.GetGamesByPlayer(id));
             }
             catch (Exception ex)
             {
@@ -104,13 +112,16 @@ namespace RV.Chess.CBReader
             }
         }
 
-        public Result<IImmutableList<Result<CbhRecord>>> GetGameHeaders(uint count)
+        public Result<IEnumerable<Result<CbhRecord>>> GetGameHeaders()
         {
+            if (IsError)
+            {
+                return Result.Fail(ErrorMessage);
+            }
+
             try
             {
-                return IsError
-                    ? Result.Fail(ErrorMessage)
-                    : _gameReader.Read(0, count).ToImmutableList();
+                return Result.Ok(_headersReader.Read(0, int.MaxValue));
             }
             catch (Exception ex)
             {
@@ -118,13 +129,33 @@ namespace RV.Chess.CBReader
             }
         }
 
-        public Result<IImmutableList<Result<CbhRecord>>> GetGameHeaders(uint skip, uint count)
+        public Result<IEnumerable<Result<CbhRecord>>> GetGameHeaders(uint count)
         {
+            if (IsError)
+            {
+                return Result.Fail(ErrorMessage);
+            }
+
             try
             {
-                return IsError
-                    ? Result.Fail(ErrorMessage)
-                    : _gameReader.Read(skip, count).ToImmutableList();
+                return Result.Ok(_headersReader.Read(0, count));
+            }
+            catch (Exception ex)
+            {
+                return Result.Fail(ex.Message);
+            }
+        }
+
+        public Result<IEnumerable<Result<CbhRecord>>> GetGameHeaders(uint skip, uint count)
+        {
+            if (IsError)
+            {
+                return Result.Fail(ErrorMessage);
+            }
+
+            try
+            {
+                return Result.Ok(_headersReader.Read(skip, count));
             }
             catch (Exception ex)
             {
@@ -139,21 +170,100 @@ namespace RV.Chess.CBReader
                 return Result.Fail(ErrorMessage);
             }
 
-            return _gameReader.Read(id, 1).FirstOrDefault() ?? Result.Fail("Game not found");
+            try
+            {
+                return _headersReader.Read(id, 1).First();
+            }
+            catch (Exception ex)
+            {
+                return Result.Fail(ex.Message);
+            }
+        }
+
+        public Result<GameMoves> GetMoves(CbGameMetadata gm)
+        {
+            if (IsError)
+            {
+                return Result.Fail(ErrorMessage);
+            }
+
+            try
+            {
+                return _movesReader.Read(gm.MovesDataStartOffset, gm.AnnotationsDataStartOffset);
+            }
+            catch (Exception ex)
+            {
+                return Result.Fail(ex.Message);
+            }
         }
 
         public Result<GameMoves> GetMoves(uint movesOffset, uint annotationsOffset)
         {
-            return IsError
-                ? Result.Fail(ErrorMessage)
-                : _movesReader.Read(movesOffset, annotationsOffset);
+            if (IsError)
+            {
+                return Result.Fail(ErrorMessage);
+            }
+
+            try
+            {
+                return _movesReader.Read(movesOffset, annotationsOffset);
+            }
+            catch (Exception ex)
+            {
+                return Result.Fail(ex.Message);
+            }
         }
 
-        public Result<HashSet<uint>> GetTopGames(uint count = int.MaxValue)
+        public Result<IEnumerable<Result<uint>>> GetTopGames(uint count = int.MaxValue)
         {
-            return IsError
-                ? Result.Fail(ErrorMessage)
-                : _topGamesReader.Read(count);
+            if (IsError)
+            {
+                return Result.Fail(ErrorMessage);
+            }
+
+            try
+            {
+                return Result.Ok(_topGamesReader.Read(count));
+            }
+            catch (Exception ex)
+            {
+                return Result.Fail(ex.Message);
+            }
+        }
+
+        public Result<IEnumerable<Result<uint>>> FindGamesWithSearchBooster(string fen)
+        {
+            if (IsError)
+            {
+                return Result.Fail(ErrorMessage);
+            }
+
+            try
+            {
+                return FindGamesWithSearchBooster(new Chessgame(fen));
+            }
+            catch (Exception ex)
+            {
+                return Result.Fail(ex.Message);
+            }
+        }
+
+        public Result<IEnumerable<Result<uint>>> FindGamesWithSearchBooster(Chessgame game)
+        {
+            if (IsError)
+            {
+                return Result.Fail(ErrorMessage);
+            }
+
+            try
+            {
+                var mask = CBPositionSearchBoosterEncoder.Encode(game);
+                return Result.Ok(_positionSearchBoosterReader.Find(mask));
+            }
+            catch (Exception ex)
+            {
+                return Result.Fail(ex.Message);
+            }
         }
     }
 }

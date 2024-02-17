@@ -1,4 +1,5 @@
-﻿using RV.Chess.CBReader.Entities;
+﻿using FluentResults;
+using RV.Chess.CBReader.Entities;
 using RV.Chess.CBReader.Utils;
 
 namespace RV.Chess.CBReader.Readers
@@ -29,7 +30,7 @@ namespace RV.Chess.CBReader.Readers
                 59  	4 	Number of references to this player. In games were a player plays against themselves, this is counted twice.
                 63 	    4 	The id of the first game in the database with this player.
         */
-        internal PlayerRecord GetPlayer(int id)
+        internal PlayerRecord GetSingle(int id)
         {
             if (_players.TryGetValue(id, out var cached))
             {
@@ -59,6 +60,38 @@ namespace RV.Chess.CBReader.Readers
             }
 
             return UnknownPlayer;
+        }
+
+        internal IEnumerable<Result<PlayerRecord>> GetAll()
+        {
+            if (IsError)
+            {
+                throw new InvalidOperationException(ErrorMessage);
+            }
+
+            var playerId = 0;
+
+            _fs.Seek(FILE_HEADER_SIZE, SeekOrigin.Begin);
+            while (_reader.BaseStream.Position != _reader.BaseStream.Length)
+            {
+                Result<PlayerRecord> result;
+
+                try
+                {
+                    var record = _reader.ReadBytes(RECORD_SIZE).AsSpan();
+                    result = new PlayerRecord(playerId,
+                        record.Slice(9, 30).ToCBZeroTerminatedString(),
+                        record.Slice(39, 20).ToCBZeroTerminatedString(),
+                        record.Slice(63, 4).ToUIntBigEndian());
+                    playerId++;
+                }
+                catch (Exception ex)
+                {
+                    result = Result.Fail(ex.Message);
+                }
+
+                yield return result;
+            }
         }
     }
 }

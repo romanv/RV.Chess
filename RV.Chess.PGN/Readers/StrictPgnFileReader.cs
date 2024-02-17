@@ -13,14 +13,9 @@ namespace RV.Chess.PGN.Readers
         private int _col = 1;
         private int _previousChunkStart = 0;
         private int _row = 1;
+        private bool _disposedValue;
 
         private StrictPgnFileReader() { }
-
-        public void Dispose()
-        {
-            _sr?.Dispose();
-            _fs?.Dispose();
-        }
 
         public bool TryGetGameChunk([NotNullWhen(true)] out PgnGameChunk chunk)
         {
@@ -202,18 +197,26 @@ namespace RV.Chess.PGN.Readers
                 throw new ArgumentException("File does not exist");
             }
 
-            var reader = new StrictPgnFileReader();
+            var reader = new StrictPgnFileReader
+            {
+                _fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)
+            };
+            reader._sr = new StreamReader(reader._fs, Encoding.UTF8);
+            reader._bufferEnd = reader._sr.ReadBlock(reader._buffer, 0, BUFFER_SIZE);
+            return reader;
+        }
 
-            try
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposedValue)
             {
-                reader._fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                reader._sr = new StreamReader(reader._fs, Encoding.UTF8);
-                reader._bufferEnd = reader._sr.ReadBlock(reader._buffer, 0, BUFFER_SIZE);
-                return reader;
-            }
-            catch
-            {
-                throw;
+                if (disposing)
+                {
+                    _sr?.Dispose();
+                    _fs?.Dispose();
+                }
+
+                _disposedValue = true;
             }
         }
 
@@ -225,6 +228,12 @@ namespace RV.Chess.PGN.Readers
             _previousChunkStart = 0;
             _row = 1;
             _bufferEnd = _sr?.ReadBlock(_buffer, 0, BUFFER_SIZE) ?? 0;
+        }
+
+        public void Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

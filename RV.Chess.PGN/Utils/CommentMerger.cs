@@ -1,4 +1,6 @@
-﻿namespace RV.Chess.PGN.Utils
+﻿using System.Linq;
+
+namespace RV.Chess.PGN.Utils
 {
     internal static class CommentMerger
     {
@@ -22,13 +24,7 @@
                 // check if shorter comment is a part of the longer one
                 if (wordsNew.Count < wordsExisting.Count)
                 {
-                    foreach (var wordHash in wordsNew)
-                    {
-                        if (wordsExisting.Contains(wordHash))
-                        {
-                            matchingCount++;
-                        }
-                    }
+                    matchingCount += wordsNew.Count(wordHash => wordsExisting.Contains(wordHash));
 
                     if (matchingCount >= wordsNew.Count * 0.8)
                     {
@@ -40,13 +36,7 @@
                 }
                 else
                 {
-                    foreach (var wordHash in wordsExisting)
-                    {
-                        if (wordsNew.Contains(wordHash))
-                        {
-                            matchingCount++;
-                        }
-                    }
+                    matchingCount += wordsExisting.Count(wordHash => wordsNew.Contains(wordHash));
 
                     if (matchingCount >= wordsExisting.Count * 0.8)
                     {

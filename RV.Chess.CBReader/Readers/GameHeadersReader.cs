@@ -52,7 +52,7 @@ namespace RV.Chess.CBReader.Readers
         {
             if (IsError)
             {
-                throw new InvalidDataException(ErrorMessage);
+                throw new InvalidOperationException(ErrorMessage);
             }
 
             var readRecords = 0;
@@ -60,7 +60,7 @@ namespace RV.Chess.CBReader.Readers
             _fs.Seek(FILE_HEADER_SIZE + skip * RECORD_SIZE, SeekOrigin.Begin);
             while (readRecords < count && _reader.BaseStream.Position != _reader.BaseStream.Length)
             {
-                Result<CbhRecord>? result;
+                Result<CbhRecord> result;
 
                 try
                 {
@@ -74,8 +74,8 @@ namespace RV.Chess.CBReader.Readers
                             Id = (uint)(skip + readRecords),
                             MovesDataStartOffset = record.Slice(1, 4).ToUIntBigEndian(),
                             AnnotationsDataStartOffset = record.Slice(5, 4).ToUIntBigEndian(),
-                            WhitePlayer = _playerReader.GetPlayer((int)record.Slice(9, 3).ToUIntBigEndian()),
-                            BlackPlayer = _playerReader.GetPlayer((int)record.Slice(12, 3).ToUIntBigEndian()),
+                            WhitePlayer = _playerReader.GetSingle((int)record.Slice(9, 3).ToUIntBigEndian()),
+                            BlackPlayer = _playerReader.GetSingle((int)record.Slice(12, 3).ToUIntBigEndian()),
                             TournamentId = record.Slice(15, 3).ToUIntBigEndian(),
                             AnnotatorId = record.Slice(18, 3).ToUIntBigEndian(),
                             SourceId = record.Slice(21, 3).ToUIntBigEndian(),
@@ -117,18 +117,13 @@ namespace RV.Chess.CBReader.Readers
 
                         result = text;
                     }
-
-                    readRecords++;
                 }
                 catch (Exception ex)
                 {
-                    result = Result.Fail(ex.Message);
+                    result = Result.Fail($"Game #{skip + readRecords} parsing error ({ex.Message})");
                 }
 
-                if (result == null)
-                {
-                    yield break;
-                }
+                readRecords++;
 
                 yield return result;
             }

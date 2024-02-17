@@ -69,7 +69,7 @@ namespace RV.Chess.PGN.Tree
                 id = lastId + 1;
             }
 
-            if (root == null)
+            if (root.Moves.Count == 0 && root.Next.Count == 0)
             {
                 throw new InvalidDataException("Tree is empty");
             }
@@ -128,7 +128,7 @@ namespace RV.Chess.PGN.Tree
             {
                 // root moves are exhausted, but there are still moves in the branch
                 // we have to check them against all existing branches to see if there is a match
-                var matchingBranch = root.Next.FirstOrDefault(n => n.Moves.FirstOrDefault() == branch[i]);
+                var matchingBranch = root.Next.Find(n => n.Moves.FirstOrDefault() == branch[i]);
 
                 if (matchingBranch != null)
                 {
@@ -151,7 +151,7 @@ namespace RV.Chess.PGN.Tree
             T? prev) where T : ChessTreeMove
         {
             var id = startingId + 1;
-            var result = new List<List<T>>() { new List<T>() };
+            var result = new List<List<T>>() { new() };
 
             foreach (var move in moves)
             {
