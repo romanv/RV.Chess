@@ -19,6 +19,7 @@ namespace RV.Chess.CBReader
         private readonly PositionSearchBoosterReader? _positionSearchBoosterReader;
         private readonly EntitySearchIndexBoosterReader? _entitySearchIndexBoosterReader;
         private readonly TournamentReader? _tournamentReader;
+        private readonly AnnotatorsReader? _annotatorsReader;
 
         private CBReader(string dbDirectory, string dbName)
         {
@@ -36,6 +37,7 @@ namespace RV.Chess.CBReader
                     new EntitySearchIndexBoosterReader(dbPathNoExtension, gameIdsBoosterReader);
                 _headersReader = new GameHeadersReader(dbPathNoExtension, _playerReader, _movesReader);
                 _tournamentReader = new TournamentReader(dbPathNoExtension);
+                _annotatorsReader = new AnnotatorsReader(dbPathNoExtension);
             }
             catch (Exception ex)
             {
@@ -52,6 +54,7 @@ namespace RV.Chess.CBReader
         [MemberNotNullWhen(returnValue: false, nameof(_positionSearchBoosterReader))]
         [MemberNotNullWhen(returnValue: false, nameof(_entitySearchIndexBoosterReader))]
         [MemberNotNullWhen(returnValue: false, nameof(_tournamentReader))]
+        [MemberNotNullWhen(returnValue: false, nameof(_annotatorsReader))]
         public bool IsError { get; private set; }
 
         public string ErrorMessage { get; private set; } = string.Empty;
@@ -278,6 +281,23 @@ namespace RV.Chess.CBReader
             try
             {
                 return Result.Ok(_tournamentReader.GetAll());
+            }
+            catch (Exception ex)
+            {
+                return Result.Fail(ex.Message);
+            }
+        }
+
+        public Result<IEnumerable<Result<AnnotatorRecord>>> GetAllAnnotators()
+        {
+            if (IsError)
+            {
+                return Result.Fail(ErrorMessage);
+            }
+
+            try
+            {
+                return Result.Ok(_annotatorsReader.GetAll());
             }
             catch (Exception ex)
             {
