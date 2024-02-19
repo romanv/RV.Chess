@@ -18,6 +18,7 @@ namespace RV.Chess.CBReader
         private readonly TopGamesReader? _topGamesReader;
         private readonly PositionSearchBoosterReader? _positionSearchBoosterReader;
         private readonly EntitySearchIndexBoosterReader? _entitySearchIndexBoosterReader;
+        private readonly TournamentReader? _tournamentReader;
 
         private CBReader(string dbDirectory, string dbName)
         {
@@ -34,12 +35,12 @@ namespace RV.Chess.CBReader
                 _entitySearchIndexBoosterReader =
                     new EntitySearchIndexBoosterReader(dbPathNoExtension, gameIdsBoosterReader);
                 _headersReader = new GameHeadersReader(dbPathNoExtension, _playerReader, _movesReader);
+                _tournamentReader = new TournamentReader(dbPathNoExtension);
             }
             catch (Exception ex)
             {
                 IsError = true;
                 ErrorMessage = ex.Message;
-                return;
             }
         }
 
@@ -50,6 +51,7 @@ namespace RV.Chess.CBReader
         [MemberNotNullWhen(returnValue: false, nameof(_topGamesReader))]
         [MemberNotNullWhen(returnValue: false, nameof(_positionSearchBoosterReader))]
         [MemberNotNullWhen(returnValue: false, nameof(_entitySearchIndexBoosterReader))]
+        [MemberNotNullWhen(returnValue: false, nameof(_tournamentReader))]
         public bool IsError { get; private set; }
 
         public string ErrorMessage { get; private set; } = string.Empty;
@@ -259,6 +261,23 @@ namespace RV.Chess.CBReader
             {
                 var mask = CBPositionSearchBoosterEncoder.Encode(game);
                 return Result.Ok(_positionSearchBoosterReader.Find(mask));
+            }
+            catch (Exception ex)
+            {
+                return Result.Fail(ex.Message);
+            }
+        }
+
+        public Result<IEnumerable<Result<TournamentRecord>>> GetAllTournaments()
+        {
+            if (IsError)
+            {
+                return Result.Fail(ErrorMessage);
+            }
+
+            try
+            {
+                return Result.Ok(_tournamentReader.GetAll());
             }
             catch (Exception ex)
             {
