@@ -51,9 +51,19 @@ namespace RV.Chess.CBReader.Utils
             };
         }
 
-        internal static DateOnly ToDate(this Span<byte> span)
+        internal static DateOnly ToDateFromBigEndian(this Span<byte> span)
         {
             var b = (int)span.ToUIntBigEndian();
+            var d = Math.Max(1, b & 0b11111);
+            var m = Math.Max(1, (b >> 5) & 0b1111);
+            var y = Math.Max(1, b >> 9);
+
+            return new DateOnly(y, m, d);
+        }
+
+        internal static DateOnly ToDateFromLittleEndian(this Span<byte> span)
+        {
+            var b = (int)span.ToUIntLittleEndian();
             var d = Math.Max(1, b & 0b11111);
             var m = Math.Max(1, (b >> 5) & 0b1111);
             var y = Math.Max(1, b >> 9);

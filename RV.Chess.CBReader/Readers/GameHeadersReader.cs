@@ -79,7 +79,7 @@ namespace RV.Chess.CBReader.Readers
                             TournamentId = record.Slice(15, 3).ToUIntBigEndian(),
                             AnnotatorId = record.Slice(18, 3).ToUIntBigEndian(),
                             SourceId = record.Slice(21, 3).ToUIntBigEndian(),
-                            GameDate = record.Slice(24, 3).ToDate(),
+                            GameDate = record.Slice(24, 3).ToDateFromBigEndian(),
                             GameResult = (GameResult)record[27],
                             LineEvalNAG = record[28],
                             Round = record[29],
