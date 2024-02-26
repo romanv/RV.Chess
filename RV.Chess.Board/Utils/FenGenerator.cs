@@ -57,9 +57,9 @@ namespace RV.Chess.Board.Utils
             {
                 var clock = game.HalfMoveClockStart;
 
-                foreach (var move in game._moveList)
+                foreach (var move in game.Moves)
                 {
-                    if (move.Type == MoveType.Pawn || move.IsPromotion || move.IsCapture)
+                    if (move.Piece == PieceType.Pawn || move.PromoteTo != PieceType.None || move.IsCapture)
                     {
                         clock = 0;
                     }
