@@ -55,6 +55,12 @@ namespace RV.Chess.Board.Game
 
         public uint Hash => _incrementalHash ^ Zobrist.GetCastlingHash(this);
 
+        public static bool IsValidFen(string fen)
+        {
+            var cg = new Chessgame();
+            return cg.SetFen(fen);
+        }
+
         public void ClearBoard()
         {
             Board.Clear();
