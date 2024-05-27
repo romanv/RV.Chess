@@ -12,7 +12,7 @@ namespace RV.Chess.Board.Game
     public class Chessgame
     {
         internal readonly Stack<FastMove> _moveList = new();
-        internal uint _incrementalHash = Zobrist.DefaultPositionPieceHash;
+        internal ulong _incrementalHash = Zobrist.DefaultPositionPieceHash;
         private const int MAX_MOVES = 220;
         private readonly DefaultObjectPool<BoardState> _boardsPool = new(new DefaultPooledObjectPolicy<BoardState>());
         private readonly FastMove[] _moves = new FastMove[MAX_MOVES];
@@ -53,7 +53,7 @@ namespace RV.Chess.Board.Game
 
         public List<Move> Moves { get; } = new List<Move>();
 
-        public uint Hash => _incrementalHash ^ Zobrist.GetCastlingHash(this);
+        public ulong Hash => _incrementalHash ^ Zobrist.GetCastlingHash(this);
 
         public static bool IsValidFen(string fen)
         {

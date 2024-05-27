@@ -28,11 +28,11 @@ namespace RV.Chess.Board.Tests
         }
 
         [Theory]
-        [InlineData("r1bqkb1r/pppp1ppp/2n2n2/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4", 2976971930)]
-        [InlineData("r1bqk2r/pppp1ppp/2n2n2/1Bb1p3/4P3/2P2N2/PP1P1PPP/RNBQ1RK1 b kq - 0 5", 4289297830)]
-        [InlineData("r3kbnr/pppppppp/8/3BN3/3Bn3/8/PPPPPPPP/R3KB1R w KQkq - 0 1", 3598253172)]
-        [InlineData("r3kbnr/pppppppp/8/3BN3/3Bn3/8/PPPPPPPP/R3KB1R b KQkq - 0 1", 783211230)]
-        public void Zobrist_HashesAreStable(string fen, uint expected)
+        [InlineData("r1bqkb1r/pppp1ppp/2n2n2/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4", 12785997082355673584)]
+        [InlineData("r1bqk2r/pppp1ppp/2n2n2/1Bb1p3/4P3/2P2N2/PP1P1PPP/RNBQ1RK1 b kq - 0 5", 18422393906087598381)]
+        [InlineData("r3kbnr/pppppppp/8/3BN3/3Bn3/8/PPPPPPPP/R3KB1R w KQkq - 0 1", 15454379699631730653)]
+        [InlineData("r3kbnr/pppppppp/8/3BN3/3Bn3/8/PPPPPPPP/R3KB1R b KQkq - 0 1", 3363866619039787732)]
+        public void Zobrist_HashesAreStable(string fen, ulong expected)
         {
             var game = new Chessgame(fen);
             Assert.Equal(expected, game.Hash);
@@ -148,6 +148,8 @@ namespace RV.Chess.Board.Tests
             "r3k2r/p1ppqpb1/bn2pnp1/3PN3/4P3/1pN2Q1p/PPPBBPPP/1R1K3R b kq - 2 2")]
         public void Zobrist_Generic(string fenStart, string move, string fenTargetPos)
         {
+            var gg = new Chessgame();
+
             var gameSource = new Chessgame(fenStart);
             gameSource.TryMakeMove(move);
             var gameTarget = new Chessgame(fenTargetPos);
