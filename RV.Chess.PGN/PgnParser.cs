@@ -215,7 +215,8 @@ namespace RV.Chess.PGN
                             side = side.Opposite();
                             break;
                         }
-                        else if (text[_cursor] == 'Z' && text.PeekAt(_cursor + 1) == '0')
+                        else if ((text[_cursor] == 'Z' && text.PeekAt(_cursor + 1) == '0')
+                            || (text[_cursor] == '-' && text.PeekAt(_cursor + 1) == '-'))
                         {
                             // chessbase-style null move
                             moves.Peek().Add(new PgnMoveNode(moveNo, side, "Z0", string.Empty, true));
