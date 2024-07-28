@@ -1,7 +1,6 @@
-﻿namespace RV.Chess.PGN
+﻿namespace RV.Chess.PGN;
+
+public abstract class PgnNode
 {
-    public abstract class PgnNode
-    {
-        public abstract PgnNodeKind Kind { get; }
-    }
+    public abstract PgnNodeKind Kind { get; }
 }

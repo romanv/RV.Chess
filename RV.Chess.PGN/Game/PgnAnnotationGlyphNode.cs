@@ -1,19 +1,13 @@
-﻿namespace RV.Chess.PGN
+﻿namespace RV.Chess.PGN;
+
+public class PgnAnnotationGlyphNode(string nag) : PgnNode
 {
-    public class PgnAnnotationGlyphNode : PgnNode
+    public override PgnNodeKind Kind => PgnNodeKind.NAG;
+
+    public string NAG { get; } = nag;
+
+    public override string ToString()
     {
-        public PgnAnnotationGlyphNode(string nag)
-        {
-            NAG = nag;
-        }
-
-        public override PgnNodeKind Kind => PgnNodeKind.NAG;
-
-        public string NAG { get; }
-
-        public override string ToString()
-        {
-            return NAG;
-        }
+        return NAG;
     }
 }

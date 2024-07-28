@@ -1,217 +1,237 @@
-﻿using Xunit;
-using RV.Chess.PGN;
+﻿using RV.Chess.PGN;
 using RV.Chess.Shared.Types;
+using Xunit;
 
-namespace RV.PGNParser.Tests
+namespace RV.PGNParser.Tests;
+
+public class ParserTests
 {
-    public class ParserTests
+    private static PgnGame GetGame(string input)
     {
-        [Theory]
-        [InlineData("[Event \"?\"] *", "Event", "?")]
-        [InlineData("[Black \"The brave and the KID III #4\"] *", "Black", "The brave and the KID III #4")]
-        [InlineData("[Black \"With escaped \\\" symbol \"] *", "Black", "With escaped \" symbol ")]
-        internal void Tags_Valid(string text, string key, string value)
-        {
-            using var parser = PgnParser.FromString(text);
-            var game = parser.GetGames().First();
-            Assert.True(game.IsSuccess);
-            Assert.Single(game.Value.Tags);
-            Assert.True(game.Value.Tags.ContainsKey(key));
-            Assert.Equal(value, game.Value.Tags[key]);
-        }
+        using var parser = PgnParser.FromString(input);
+        return parser.GetGames().First();
+    }
 
-        [Theory]
-        [InlineData("[Event ?\"] *")]
-        [InlineData("[Black \"The brave and the KID III #4] *")]
-        [InlineData("[\nBlack \"The brave and the KID III #4\"] *")]
-        internal void Tags_Invalid(string text)
-        {
-            using var parser = PgnParser.FromString(text);
-            var game = parser.GetGames().FirstOrDefault();
-            Assert.True(game == null || game.IsFailed);
-        }
+    [Theory]
+    [Trait("Category", "Tags")]
+    [InlineData("[Event \"?\"] *", "Event", "?")]
+    [InlineData("[Black \"The brave and the KID III #4\"] *", "Black", "The brave and the KID III #4")]
+    [InlineData("[Black \"With escaped \\\" symbol \"] *", "Black", "With escaped \" symbol ")]
+    internal void TagsValid(string input, string key, string value)
+    {
+        var game = GetGame(input);
+        Assert.Empty(game.Errors);
+        Assert.True(game.Tags.ContainsKey(key));
+        var tag = Assert.Single(game.Tags);
+        Assert.Equal(value, tag.Value);
+    }
 
-        [Theory]
-        [InlineData("1. b3 1/2-1/2", GameResult.Tie)]
-        [InlineData("1 b3 \n 1-0", GameResult.White)]
-        [InlineData("1 b3 \n\n 0-1", GameResult.Black)]
-        [InlineData("99... b3 *", GameResult.Unknown)]
-        internal void GameTerminator_Valid(string text, GameResult expectedResult)
-        {
-            using var parser = PgnParser.FromString(text);
-            var game = parser.GetGames().First().Value;
-            var terminator = game.Moves[^1];
-            Assert.IsType<PgnTerminatorNode>(terminator);
-            Assert.Equal(expectedResult, ((PgnTerminatorNode)terminator).Terminator);
-        }
+    [Theory]
+    [Trait("Category", "Tags")]
+    [InlineData("[Event ?\"]\n[White \"?\"]\n *")]
+    [InlineData("[Black \"The brave and the KID III #4]\n[White \"?\"]\n *")]
+    [InlineData("[\nBlack \"The brave and the KID III #4\"]\n[White \"?\"]\n *")]
+    internal void TagsInvalid(string input)
+    {
+        var game = GetGame(input);
+        Assert.NotNull(game);
+        Assert.Single(game.Errors, e => e.Type == PgnErrorType.TagError);
+    }
 
-        [Theory]
-        [InlineData("1. b3 1/2z-1/2")]
-        [InlineData("1 b3 \n 1-1")]
-        [InlineData("1 b3 \n\n 1/2-1\\2")]
-        internal void GameTerminator_Invalid(string text)
-        {
-            using var parser = PgnParser.FromString(text);
-            var game = parser.GetGames().FirstOrDefault();
-            Assert.Null(game);
-        }
+    [Theory]
+    [Trait("Category", "Comments")]
+    [InlineData("; hello \n*", " hello ")]
+    [InlineData("\n; hello\n *", " hello")]
+    internal void CommentarySingleLine(string input, string expected)
+    {
+        var game = GetGame(input);
+        Assert.Empty(game.Errors);
+        var comment = game.Moves.SingleOrDefault(n => n is PgnCommentNode);
+        Assert.NotNull(comment);
+        Assert.Equal(expected, (comment as PgnCommentNode)?.Comment);
+    }
 
-        [Theory]
-        [InlineData("1. b3 O-O *", "O-O")]
-        [InlineData("1. b3 O-O+ *", "O-O+")]
-        [InlineData("1. b3 O-O-O# *", "O-O-O#")]
-        [InlineData("1 b3 \n O-O-O 1..b3 *", "O-O-O")]
-        [InlineData("1 b3 \n\n 0-0 *", "O-O")]
-        [InlineData("1 b3 \n\n 0-0-0 *", "O-O-O")]
-        internal void Castling_Valid(string text, string expected)
-        {
-            using var parser = PgnParser.FromString(text);
-            var game = parser.GetGames().First().Value;
-            Assert.Single(game.Moves, c => c is PgnMoveNode mn && mn.San == expected);
-        }
+    [Theory]
+    [Trait("Category", "Comments")]
+    [InlineData("{ hello } *", " hello ")]
+    [InlineData(" { hello\nthere } *", " hello\nthere ")]
+    internal void CommentaryMultiline(string input, string expected)
+    {
+        var game = GetGame(input);
+        Assert.Empty(game.Errors);
+        var comment = game.Moves.SingleOrDefault(n => n is PgnCommentNode);
+        Assert.NotNull(comment);
+        Assert.Equal(expected, (comment as PgnCommentNode)?.Comment);
+    }
 
-        [Fact]
-        internal void Castling_InsideRAV()
-        {
-            using var parser = PgnParser.FromString("(1. b3 O-O-O) *");
-            var moves = parser.GetGames().First().Value.Moves;
-            Assert.IsType<PgnVariationNode>(moves[0]);
-            Assert.Equal("1...O-O-O", (moves[0] as PgnVariationNode)?.Moves[1].ToString());
-        }
+    [Theory]
+    [Trait("Category", "Castling")]
+    [InlineData("0-0", "O-O")]
+    [InlineData("0-0-0", "O-O-O")]
+    [InlineData("0-0+", "O-O+")]
+    [InlineData("0-0#", "O-O#")]
+    [InlineData("0-0-0+", "O-O-O+")]
+    [InlineData("0-0-0#", "O-O-O#")]
+    internal void CastlingWithZeroes(string input, string expected)
+    {
+        var game = GetGame(input);
+        Assert.NotNull(game);
+        var move = Assert.Single(game.Moves);
+        Assert.True(move is PgnMoveNode mn && mn.San == expected);
+    }
 
-        [Theory]
-        [InlineData("1 b3 \n O-0-O 1..b3 *")]
-        [InlineData("1 b3 \n\n O+O *")]
-        [InlineData("1 b3 \n\n O_-O-O *")]
-        internal void Castling_Invalid(string text)
-        {
-            using var parser = PgnParser.FromString(text);
-            var game = parser.GetGames().First();
-            Assert.True(game.IsFailed);
-        }
+    [Theory]
+    [Trait("Category", "Castling")]
+    [InlineData("0-0- \n[Black \"?\"]")]
+    [InlineData("0- \n[Black \"?\"]")]
+    [InlineData("0-- \n[Black \"?\"]")]
+    [InlineData("0++ \n[Black \"?\"]")]
+    internal void CastlingInvalid(string input)
+    {
+        var game = GetGame(input);
+        Assert.NotNull(game);
+        Assert.Single(game.Errors);
+        Assert.Single(game.Errors, e => e.Type == PgnErrorType.MovetextError);
+    }
 
-        [Theory]
-        [InlineData("1. O-O *", 1)]
-        [InlineData("33. O-O *", 33)]
-        [InlineData("45 O-O-O 1..b3 *", 45)]
-        [InlineData("45. O-O-O 1..b3 *", 45)]
-        [InlineData("45... O-O-O 1..b3 *", 45)]
-        internal void MoveNumber_Valid(string text, int moveNo)
-        {
-            using var parser = PgnParser.FromString(text);
-            var move = parser.GetGames().First().Value.Moves[0];
-            Assert.Equal(moveNo, (move as PgnMoveNode)?.MoveNumber);
-        }
+    [Theory]
+    [Trait("Category", "Terminators")]
+    [InlineData("1/2-1/2", GameResult.Tie)]
+    [InlineData("\n 1-0", GameResult.White)]
+    [InlineData("\n\n 0-1", GameResult.Black)]
+    [InlineData("*", GameResult.Unknown)]
+    internal void GameTerminatorValid(string input, GameResult expectedResult)
+    {
+        var game = GetGame(input);
+        Assert.NotNull(game);
+        var terminator = game.Moves[^1];
+        Assert.IsType<PgnTerminatorNode>(terminator);
+        Assert.Equal(expectedResult, ((PgnTerminatorNode)terminator).Terminator);
+    }
 
-        [Theory]
-        [InlineData("1z. O-O *")]
-        [InlineData("3-. O-O *")]
-        [InlineData("4x. O-O-O 1..b3 *")]
-        internal void MoveNumber_Invalid(string text)
-        {
-            using var parser = PgnParser.FromString(text);
-            var game = parser.GetGames().First();
-            Assert.True(game.IsFailed);
-        }
+    [Theory]
+    [Trait("Category", "Terminators")]
+    [InlineData("[Test \"Test\"]\n\n")]
+    [InlineData("[Test \"Test\"]\n\n1/2-1/3")]
+    [InlineData("[Test \"Test\"]\n\n0-0")]
+    [InlineData("[Test \"Test\"]\n\n1-1")]
+    internal void GameTerminatorInvalid(string input)
+    {
+        var game = GetGame(input);
+        Assert.Single(game.Errors, e => e.Type == PgnErrorType.UnrecoverableError);
+    }
 
-        [Theory]
-        [InlineData("[Event \"?\"]\n1... Nf6 2. Bb2 g6 *", new string[] { "Nf6", "Bb2", "g6" })]
-        [InlineData("1. c6+ 2. Qxd3 O-O-O\n 1/2-1/2", new string[] { "c6+", "Qxd3", "O-O-O" })]
-        [InlineData("1. c8=Q bxc1=B# 0-1", new string[] { "c8=Q", "bxc1=B#" })]
-        internal void San_Valid(string text, string[] expected)
-        {
-            using var parser = PgnParser.FromString(text);
-            var moves = parser.GetGames().First().Value.Moves;
-            Assert.Equal(expected, moves.Where(n => n is PgnMoveNode).Select(n => (n as PgnMoveNode)?.San));
-        }
+    [Theory]
+    [Trait("Category", "MoveNumber")]
+    [InlineData("1. O-O *", 1)]
+    [InlineData("33. O-O *", 33)]
+    [InlineData("45 O-O-O 1..b3 *", 45)]
+    [InlineData("45. O-O-O 1..b3 *", 45)]
+    [InlineData("45... O-O-O 1..b3 *", 45)]
+    internal void MoveNumberValid(string input, int moveNo)
+    {
+        var game = GetGame(input);
+        Assert.Equal(moveNo, (game.Moves[0] as PgnMoveNode)?.MoveNumber);
+    }
 
-        [Theory]
-        [InlineData("[Event \"?\"]\n1... Nz6 2. Bb2 g6 *")]
-        [InlineData("1. c6- 2. Qxd3 O-O-O\n 1/2-1/2")]
-        [InlineData("1. c8=P bxc1=B# 0-1")]
-        internal void San_Invalid(string text)
-        {
-            using var parser = PgnParser.FromString(text);
-            var game = parser.GetGames().First();
-            Assert.True(game.IsFailed);
-        }
+    [Theory]
+    [Trait("Category", "MoveNumber")]
+    [InlineData("1z. O-O *")]
+    [InlineData("3-. O-O *")]
+    [InlineData("4x. O-O-O 1..b3 *")]
+    internal void MoveNumberInvalid(string input)
+    {
+        var game = GetGame(input);
+        Assert.Contains(game.Errors, e => e.Type == PgnErrorType.MovetextError);
+    }
 
-        [Theory]
-        [InlineData("[Event \"?\"]\n1... Nf6! 2. Bb2 g6 *", new string[] { "!", "", "" })]
-        [InlineData("[Event \"?\"]\n1... Nf6? 2. Bb2 g6 0-1", new string[] { "?", "", "" })]
-        [InlineData("[Event \"?\"]\n1... Nf6 2. Bb2!! g6 1-0", new string[] { "", "!!", "" })]
-        [InlineData("[Event \"?\"]\n1... Nf6 2. Bb2!? g6 1/2-1/2", new string[] { "", "!?", "" })]
-        [InlineData("[Event \"?\"]\n1... Nf6 2. Bb2 g6?! *", new string[] { "", "", "?!" })]
-        [InlineData("[Event \"?\"]\n1... Nf6 2. Bb2 g6?? *", new string[] { "", "", "??" })]
-        internal void San_Suffix(string text, string[] expectedSuffix)
-        {
-            using var parser = PgnParser.FromString(text);
-            var moves = parser.GetGames().First().Value.Moves;
-            Assert.Equal(expectedSuffix, moves.Where(n => n is PgnMoveNode).Select(n => (n as PgnMoveNode)?.Annotation));
-        }
+    [Fact]
+    [Trait("Category", "MoveSides")]
+    internal void MoveSide()
+    {
+        var game = GetGame("[Event \"?\"]\n\n3. Bb5 Bc5 4. Bc5 *");
+        Assert.Equal(Side.White, (game.Moves[0] as PgnMoveNode)!.Side);
+        Assert.Equal(Side.Black, (game.Moves[1] as PgnMoveNode)!.Side);
+        Assert.Equal(Side.White, (game.Moves[2] as PgnMoveNode)!.Side);
+    }
 
-        [Theory]
-        [InlineData("3. Bb5 Bc5  (3... Nf6 4. d3) 4... Bc5 *", 2)]
-        [InlineData("(3. Bb5 Bc5 3... Nf6 4. d3) *", 4)]
-        internal void RecursiveAnnotation_Basic(string text, int expectedItemsCount)
-        {
-            using var parser = PgnParser.FromString(text);
-            var rav = parser.GetGames().First().Value.Moves.SingleOrDefault(n => n is PgnVariationNode);
-            Assert.NotNull(rav);
-            Assert.Equal(expectedItemsCount, (rav as PgnVariationNode)?.Moves.Count);
-        }
+    [Fact]
+    [Trait("Category", "NAG")]
+    internal void NagAnnotation()
+    {
+        var game = GetGame("$2 *");
+        var nag = game.Moves.SingleOrDefault(n => n is PgnAnnotationGlyphNode);
+        Assert.NotNull(nag);
+        Assert.Equal("2", (nag as PgnAnnotationGlyphNode)?.NAG);
+    }
 
-        [Fact]
-        internal void RecursiveAnnotation_MultiLevel()
-        {
-            using var parser = PgnParser.FromString("(3. Bb5 Bc5 (3.Bb5 Bc5 3... Nf6 4.d3) 3... Nf6 4. d3) *");
-            var topLevelRav = parser.GetGames().First().Value.Moves.SingleOrDefault(n => n is PgnVariationNode);
-            Assert.NotNull(topLevelRav);
-            Assert.Equal(5, ((PgnVariationNode)topLevelRav!).Moves.Count);
-            var secondLevelRav = (topLevelRav as PgnVariationNode)?.Moves.SingleOrDefault(n => n is PgnVariationNode);
-            Assert.Equal(4, (secondLevelRav as PgnVariationNode)?.Moves.Count);
-        }
+    [Theory]
+    [Trait("Category", "SAN")]
+    [InlineData("[Event \"?\"]\n1... Nf6 2. Bb2 g6 *", new string[] { "Nf6", "Bb2", "g6" })]
+    [InlineData("1. c6+ 2. Qxd3 O-O-O\n 1/2-1/2", new string[] { "c6+", "Qxd3", "O-O-O" })]
+    [InlineData("1. c8=Q bxc1=B# 0-1", new string[] { "c8=Q", "bxc1=B#" })]
+    internal void San(string input, string[] expected)
+    {
+        var game = GetGame(input);
+        Assert.Equal(expected, game.Moves.Where(n => n is PgnMoveNode).Select(n => (n as PgnMoveNode)?.San));
+    }
 
-        [Fact]
-        internal void RecursiveAnnotation_CorrectMoveColor()
-        {
-            using var parser = PgnParser.FromString("1.e4 c5 2.d4 2...cxd4 3.c3 dxc3 (3...d3) *");
-            var moves = parser.GetGames().First().Value.Moves;
-            var rav = moves.SingleOrDefault(n => n is PgnVariationNode);
-            Assert.Equal(Side.Black, (moves[5] as PgnMoveNode)?.Side);
-            Assert.Equal(Side.Black, ((rav as PgnVariationNode)?.Moves[0] as PgnMoveNode)?.Side);
-        }
+    [Theory]
+    [Trait("Category", "Suffixes")]
+    [InlineData("Nf3 *", false, false, "")]
+    [InlineData("Nf3+ *", true, false, "")]
+    [InlineData("O-O# *", false, true, "")]
+    [InlineData("Qf3#-+ *", false, true, "-+")]
+    [InlineData("Qf3-+ *", false, false, "-+")]
+    [InlineData("Nf3!? *", false, false, "!?")]
+    [InlineData("Nf3++- *", true, false, "+-")]
+    internal void Suffix(string input, bool isCheck, bool isMate, string expectedSuffix)
+    {
+        var game = GetGame(input);
+        Assert.Equal(isCheck, (game.Moves[0] as PgnMoveNode)!.San.EndsWith("+"));
+        Assert.Equal(isMate, (game.Moves[0] as PgnMoveNode)!.San.EndsWith("#"));
+        Assert.Equal(expectedSuffix, (game.Moves[0] as PgnMoveNode)!.Annotation);
+    }
 
-        [Fact]
-        internal void RecursiveAnnotation_CorrectMoveColor_WhenReturnToMainLine()
-        {
-            using var parser = PgnParser.FromString("1.e4 c5 (1...e5 2.Nc3) 2. Nc3 *");
-            var moves = parser.GetGames().First().Value.Moves;
-            Assert.Equal(Side.White, (moves[3] as PgnMoveNode)?.Side);
-        }
+    [Theory]
+    [Trait("Category", "RAV")]
+    [InlineData("1.e4 e5 2.Nf3 Nc6 (2...Nf6 3.Nxe5) 6.d4 *", 2)]
+    [InlineData("(3. Bb5 Bc5 3... Nf6 4. d3) *", 4)]
+    internal void RecursiveAnnotationBasic(string input, int expectedItemsCount)
+    {
+        var game = GetGame(input);
+        var rav = game.Moves.SingleOrDefault(n => n is PgnVariationNode);
+        Assert.NotNull(rav);
+        Assert.Equal(expectedItemsCount, (rav as PgnVariationNode)?.Moves.Count);
+    }
 
-        [Theory]
-        [InlineData("1. b3 { hello } *", "hello")]
-        [InlineData("1 b3 \n; hello \n*", "hello")]
-        [InlineData("1 b3 \n; hello\n *", "hello")]
-        [InlineData("1. b3 { hello there } ...c6 *", "hello there")]
-        [InlineData("1. b3 { hello, \\} there } ...c6 *", "hello, } there")]
-        internal void Commentary(string text, string expectedText)
-        {
-            using var parser = PgnParser.FromString(text);
-            var comment = parser.GetGames().First().Value.Moves.SingleOrDefault(n => n is PgnCommentNode);
-            Assert.NotNull(comment);
-            Assert.Equal(expectedText, (comment as PgnCommentNode)?.Comment);
-        }
+    [Fact]
+    [Trait("Category", "RAV")]
+    internal void RecursiveAnnotationMultiLevel()
+    {
+        var game = GetGame("1.e4 e5 2.Nf3 Nc6 (2...Nf6 3.Nxe5 d6 (3...Nxc3 4.Qxf5) 4.d4) 4...d5 *");
+        var topLevelRav = game.Moves.SingleOrDefault(n => n is PgnVariationNode);
+        Assert.NotNull(topLevelRav);
+        Assert.Equal(5, ((PgnVariationNode)topLevelRav!).Moves.Count);
+        var secondLevelRav = (topLevelRav as PgnVariationNode)?.Moves.SingleOrDefault(n => n is PgnVariationNode);
+        Assert.Equal(2, (secondLevelRav as PgnVariationNode)?.Moves.Count);
+    }
 
-        [Theory]
-        [InlineData("21. Re1 Rd8 $2 22.Rxe6 *", "2")]
-        internal void NagAnnotation(string text, string expectedText)
-        {
-            using var parser = PgnParser.FromString(text);
-            var nag = parser.GetGames().First().Value.Moves.SingleOrDefault(n => n is PgnAnnotationGlyphNode);
-            Assert.NotNull(nag);
-            Assert.Equal(expectedText, (nag as PgnAnnotationGlyphNode)?.NAG);
-        }
+    [Fact]
+    [Trait("Category", "RAV")]
+    internal void RecursiveAnnotationCorrectMoveSide()
+    {
+        var game = GetGame("1.e4 e5 2.Nf3 Nc6 (2...Nf6 3.Nxe5) *");
+        var rav = game.Moves.SingleOrDefault(n => n is PgnVariationNode);
+        Assert.Equal(Side.Black, (game.Moves[3] as PgnMoveNode)?.Side);
+        Assert.Equal(Side.Black, ((rav as PgnVariationNode)?.Moves[0] as PgnMoveNode)?.Side);
+    }
+
+    [Fact]
+    [Trait("Category", "RAV")]
+    internal void RecursiveAnnotationCorrectMoveSideWhenReturnToMainLine()
+    {
+        var game = GetGame("1.e4 e5 2.Nf3 Nc6 (2...Nf6 3.Nxe5) 3.Qxf8 *");
+        Assert.Equal(Side.White, (game.Moves[5] as PgnMoveNode)?.Side);
     }
 }

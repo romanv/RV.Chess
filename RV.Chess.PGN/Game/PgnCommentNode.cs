@@ -1,19 +1,13 @@
-﻿namespace RV.Chess.PGN
+﻿namespace RV.Chess.PGN;
+
+public class PgnCommentNode(string comment) : PgnNode
 {
-    public class PgnCommentNode : PgnNode
+    public override PgnNodeKind Kind => PgnNodeKind.Comment;
+
+    public string Comment { get; } = comment;
+
+    public override string ToString()
     {
-        public PgnCommentNode(string comment)
-        {
-            Comment = comment;
-        }
-
-        public override PgnNodeKind Kind => PgnNodeKind.Comment;
-
-        public string Comment { get; }
-
-        public override string ToString()
-        {
-            return $"{{ { Comment } }}";
-        }
+        return $"{{ {Comment} }}";
     }
 }

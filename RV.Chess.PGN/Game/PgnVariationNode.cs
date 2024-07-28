@@ -1,16 +1,11 @@
-﻿namespace RV.Chess.PGN
+﻿namespace RV.Chess.PGN;
+
+public class PgnVariationNode(IEnumerable<PgnNode> moves) : PgnMovetextNode(moves)
 {
-    public class PgnVariationNode : PgnMovetextNode
+    public override PgnNodeKind Kind => PgnNodeKind.Variation;
+
+    public override string ToString()
     {
-        public PgnVariationNode(IEnumerable<PgnNode> moves) : base(moves)
-        {
-        }
-
-        public override PgnNodeKind Kind => PgnNodeKind.Variation;
-
-        public override string ToString()
-        {
-            return "(" + string.Join(' ', Moves.Select(m => m.ToString())) + ")";
-        }
+        return $"({string.Join(' ', Moves.Select(m => m.ToString()))})";
     }
 }

@@ -1,27 +1,21 @@
 ﻿using RV.Chess.Shared.Types;
 
-namespace RV.Chess.PGN
+namespace RV.Chess.PGN;
+
+public class PgnTerminatorNode(GameResult terminator) : PgnNode
 {
-    public class PgnTerminatorNode : PgnNode
+    public GameResult Terminator { get; } = terminator;
+
+    public override PgnNodeKind Kind => PgnNodeKind.Terminator;
+
+    public override string ToString()
     {
-        public PgnTerminatorNode(GameResult terminator)
+        return Terminator switch
         {
-            Terminator = terminator;
-        }
-
-        public GameResult Terminator { get; }
-
-        public override PgnNodeKind Kind => PgnNodeKind.Terminator;
-
-        public override string ToString()
-        {
-            return Terminator switch
-            {
-                GameResult.White => "1-0",
-                GameResult.Black => "0-1",
-                GameResult.Tie => "1/2-1/2",
-                _ => "*",
-            };
-        }
+            GameResult.White => "1-0",
+            GameResult.Black => "0-1",
+            GameResult.Tie => "1/2-1/2",
+            _ => "*",
+        };
     }
 }

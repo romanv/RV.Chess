@@ -1,12 +1,11 @@
-﻿namespace RV.Chess.PGN
+﻿namespace RV.Chess.PGN;
+
+public enum PgnNodeKind
 {
-    public enum PgnNodeKind
-    {
-        Game,
-        Comment,
-        Move,
-        Terminator,
-        Variation,
-        NAG,
-    }
+    Game,
+    Comment,
+    Move,
+    Terminator,
+    Variation,
+    NAG,
 }

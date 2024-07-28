@@ -1,59 +1,53 @@
 ﻿using System.Text;
 using RV.Chess.Shared.Types;
 
-namespace RV.Chess.PGN
+namespace RV.Chess.PGN;
+
+public abstract class PgnMovetextNode(IEnumerable<PgnNode> moves) : PgnNode
 {
-    public abstract class PgnMovetextNode : PgnNode
+    public List<PgnNode> Moves { get; private set; } = moves.ToList();
+
+    public string Movetext
     {
-        protected PgnMovetextNode(IEnumerable<PgnNode> moves)
+        get
         {
-            Moves = moves.ToList();
-        }
+            var sb = new StringBuilder();
 
-        public List<PgnNode> Moves { get; private set; }
-
-        public string Movetext
-        {
-            get
+            for (var i = 0; i < Moves.Count; i++)
             {
-                var sb = new StringBuilder();
-
-                for (var i = 0; i < Moves.Count; i++)
+                if (Moves[i] is PgnMoveNode m)
                 {
-                    if (Moves[i] is PgnMoveNode m)
-                    {
-                        // print number for all white's moves, first move in the game / variation and first move after the variation
-                        var shouldPrintNumber = i == 0 || m.Side == Side.White || Moves[i - 1] is PgnVariationNode;
+                    // print number for all white's moves, first move in the game / variation and first move after the variation
+                    var shouldPrintNumber = i == 0 || m.Side == Side.White || Moves[i - 1] is PgnVariationNode;
 
-                        if (shouldPrintNumber)
-                        {
-                            sb.Append(m.MoveNumber);
-                            sb.Append(m.Side == Side.White ? "." : "...");
-                        }
-
-                        sb.Append(m.San);
-                    }
-                    else if (Moves[i] is PgnCommentNode c)
+                    if (shouldPrintNumber)
                     {
-                        sb.Append(c.ToString());
-                    }
-                    else if (Moves[i] is PgnTerminatorNode t)
-                    {
-                        sb.Append(t.ToString());
-                    }
-                    else if (Moves[i] is PgnVariationNode v)
-                    {
-                        sb.Append($"({ v.Movetext })");
+                        sb.Append(m.MoveNumber);
+                        sb.Append(m.Side == Side.White ? "." : "...");
                     }
 
-                    if (i < Moves.Count - 1)
-                    {
-                        sb.Append(' ');
-                    }
+                    sb.Append(m.San);
+                }
+                else if (Moves[i] is PgnCommentNode c)
+                {
+                    sb.Append(c.ToString());
+                }
+                else if (Moves[i] is PgnTerminatorNode t)
+                {
+                    sb.Append(t.ToString());
+                }
+                else if (Moves[i] is PgnVariationNode v)
+                {
+                    sb.Append($"({v.Movetext})");
                 }
 
-                return sb.ToString();
+                if (i < Moves.Count - 1)
+                {
+                    sb.Append(' ');
+                }
             }
+
+            return sb.ToString();
         }
     }
 }

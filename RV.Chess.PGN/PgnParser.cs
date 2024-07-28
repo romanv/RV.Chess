@@ -1,534 +1,547 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using System.Text.RegularExpressions;
-using FluentResults;
-using RV.Chess.PGN.Readers;
-using RV.Chess.PGN.Utils;
+﻿using System.Buffers;
+using System.Diagnostics;
+using System.Text;
 using RV.Chess.Shared.Types;
 
-namespace RV.Chess.PGN
+namespace RV.Chess.PGN;
+
+public class PgnParser : IDisposable
 {
-    public class PgnParser : IDisposable
+    private static readonly SearchValues<char> s_tagKeyTerminators = SearchValues.Create(" \"");
+    private static readonly SearchValues<char> s_tagValueTerminators = SearchValues.Create("\\\"");
+    private static readonly SearchValues<char> s_newLineSymbols = SearchValues.Create("\r\n");
+
+    private const int DefaultBufferSize = 2 * 1024 * 1024;
+    private const int MaxTokenLength = 255;
+
+    private readonly BufferedReader _reader;
+    private readonly PgnParserState _state = new();
+    private readonly char[] _buffer = new char[MaxTokenLength];
+
+    private bool _requiresRewind;
+    private bool _disposedValue;
+
+    private PgnParser(BufferedReader reader)
     {
-        private bool _isDisposed = false;
-        private long _gameChunkStart = 0;
-        private int _cursor = 0;
-        private IPgnReader _reader;
+        _reader = reader;
+    }
 
-#pragma warning disable CS8618
-        private PgnParser() { }
-#pragma warning restore CS8618
+    public static PgnParser FromFile(string path, int bufferSize = DefaultBufferSize)
+    {
+        if (!File.Exists(path))
+            throw new FileNotFoundException();
 
-        ~PgnParser() => Dispose(false);
+        var fileStream = File.OpenRead(path);
+        var reader = new BufferedReader(fileStream, bufferSize);
 
-        [MemberNotNullWhen(returnValue: false, nameof(_reader))]
-        public bool IsError { get; private set; }
+        return new PgnParser(reader);
+    }
 
-        public string ErrorMessage { get; private set; } = string.Empty;
+    public static PgnParser FromString(string data, int bufferSize = DefaultBufferSize)
+    {
+        if (string.IsNullOrEmpty(data))
+            throw new InvalidDataException("String is empty");
 
-        public static PgnParser FromFile(string path, bool useStrictReader = false)
+        var memoryStream = new MemoryStream(Encoding.UTF8.GetBytes(data));
+        var reader = new BufferedReader(memoryStream, bufferSize);
+
+        return new PgnParser(reader);
+    }
+
+    public IEnumerable<PgnGame> GetGames()
+    {
+        if (_requiresRewind)
         {
-            try
-            {
-                IPgnReader reader = useStrictReader
-                    ? StrictPgnFileReader.Open(path)
-                    : SimplePgnFileReader.Open(path);
-
-                return new PgnParser
-                {
-                    _reader = reader,
-                };
-            }
-            catch (Exception ex)
-            {
-                return new PgnParser
-                {
-                    IsError = true,
-                    ErrorMessage = ex.Message,
-                };
-            }
-        }
-
-        public static PgnParser FromString(string data)
-        {
-            try
-            {
-                return new PgnParser
-                {
-                    _reader = StringPgnReader.Open(data),
-                };
-            }
-            catch (Exception ex)
-            {
-                return new PgnParser
-                {
-                    IsError = true,
-                    ErrorMessage = ex.Message,
-                };
-            }
-        }
-
-        public IEnumerable<Result<PgnGame>> GetGames(bool useLaxTagParsing = false)
-        {
-            if (IsError)
-            {
-                yield break;
-            }
-
-            while (_reader.TryGetGameChunk(out var game))
-            {
-                _gameChunkStart = game.ChunkStartPos;
-                _cursor = 0;
-
-                Result<PgnGame> result;
-
-                try
-                {
-                    result = Result.Ok(ParseGame(game.Text, useLaxTagParsing));
-                }
-                catch (Exception ex)
-                {
-                    var gameText = game.Text[..Math.Min(2048, game.Text.Length)];
-                    result = Result.Fail(new Error(ex.Message).CausedBy(gameText.ToString()));
-                }
-
-                yield return result;
-            }
-
             _reader.Reset();
         }
 
-        private PgnGame ParseGame(ReadOnlySpan<char> text, bool useLaxTagParsing)
+        PgnGame? result = default;
+        var stopParsing = false;
+        _requiresRewind = true;
+
+        while (true)
         {
-            var moves = new Stack<List<PgnNode>>();
-            moves.Push(new List<PgnNode>());
-            var tags = new Dictionary<string, string>();
-            var moveNo = 1;
-            var side = Side.White;
-
-            while (_cursor < text.Length)
-            {
-                switch (text[_cursor])
-                {
-                    case '[':
-                        var (name, value) = useLaxTagParsing ? ReadTagPairLax(text) : ReadTagPairStrict(text);
-                        tags.TryAdd(name, value);
-                        if (name == "FEN")
-                        {
-                            side = value.Split(' ')[1] == "b" ? Side.Black : Side.White;
-                        }
-                        break;
-                    case ' ':
-                        SkipWhitespace(text);
-                        break;
-                    case '{':
-                        _cursor++;
-                        var comment = ReadStringToken(text, '}');
-                        moves.Peek().Add(new PgnCommentNode(comment.Trim()));
-                        break;
-                    case '*':
-                        moves.Peek().Add(new PgnTerminatorNode(GameResult.Unknown));
-                        return new PgnGame(tags, moves.Pop());
-                    case '0':
-                        // no need to check if it is a move number, since it can't start with zero
-                        if (_cursor == text.Length - 1)
-                        {
-                            throw new InvalidDataException($"Bad game terminator at {_gameChunkStart + _cursor}");
-                        }
-                        else
-                        {
-                            var node = ReadCastlingOrResult(text, moveNo, side);
-                            moves.Peek().Add(node);
-
-                            if (node is PgnTerminatorNode)
-                            {
-                                return new PgnGame(tags, moves.Pop());
-                            }
-
-                            side = side.Opposite();
-                        }
-
-                        break;
-                    case '1':
-                        {
-                            var next = text.PeekAt(_cursor + 1);
-
-                            if (char.IsDigit(next) || char.IsWhiteSpace(next) || next == '.')
-                            {
-                                moveNo = ReadMoveNumber(text);
-                                SkipDots(text);
-                                break;
-                            }
-                            else if (next == '-' || next == '/')
-                            {
-                                moves.Peek().Add(ReadWhiteOrDrawResult(text));
-                                return new PgnGame(tags, moves.Pop());
-                            }
-                        }
-
-                        throw new InvalidDataException($"Malformed move number at {_gameChunkStart + _cursor}");
-                    case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
-                        moveNo = ReadMoveNumber(text);
-                        SkipDots(text);
-                        break;
-                    case 'O':
-                        moves.Peek().Add(ReadCastlingOrResult(text, moveNo, side));
-                        side = side.Opposite();
-                        break;
-                    case '(':
-                        // variation starts with the same color as the previous move
-                        side = (moves.Peek().FindLast(m => m is PgnMoveNode) as PgnMoveNode)?.Side ?? side;
-                        moves.Push(new List<PgnNode>());
-                        _cursor++;
-                        break;
-                    case ')':
-                        var variation = moves.Pop();
-                        side = (moves.Peek().FindLast(m => m is PgnMoveNode) as PgnMoveNode)?.Side.Opposite() ?? side;
-                        moves.Peek().Add(new PgnVariationNode(variation));
-                        _cursor++;
-                        break;
-                    case '\n':
-                    case '\r':
-                        _cursor++;
-                        break;
-                    case '.':
-                        SkipDots(text);
-                        break;
-                    case ';':
-                        var nextNewLine = text[_cursor..].IndexOf('\n');
-
-                        if (nextNewLine > -1)
-                        {
-                            moves.Peek().Add(
-                                new PgnCommentNode(text.Slice(_cursor + 1, nextNewLine - 1).ToString().Trim()));
-                            _cursor += nextNewLine + 1;
-                            break;
-                        }
-
-                        throw new InvalidDataException($"Malformed single-line comment ad {_gameChunkStart + _cursor}");
-                    case '$':
-                        moves.Peek().Add(ReadNagGlyph(text));
-                        break;
-                    default:
-                        if (IsValidSanStartingCharacter(text[_cursor]))
-                        {
-                            moves.Peek().Add(ReadSanAndSuffix(text, moveNo, side));
-                            side = side.Opposite();
-                            break;
-                        }
-                        else if ((text[_cursor] == 'Z' && text.PeekAt(_cursor + 1) == '0')
-                            || (text[_cursor] == '-' && text.PeekAt(_cursor + 1) == '-'))
-                        {
-                            // chessbase-style null move
-                            moves.Peek().Add(new PgnMoveNode(moveNo, side, "Z0", string.Empty, true));
-                            _cursor += 2;
-                            break;
-                        }
-                        else
-                        {
-                            throw new InvalidDataException($"Unexpected character at {_gameChunkStart + _cursor}");
-                        }
-                }
-            }
-
-            throw new InvalidDataException($"Unterminated game at {_gameChunkStart}");
-        }
-
-        private PgnAnnotationGlyphNode ReadNagGlyph(ReadOnlySpan<char> text)
-        {
-            _cursor += 1;
-            var start = _cursor;
-
-            while (char.IsDigit(text.PeekAt(_cursor)))
-            {
-                _cursor++;
-            }
-
-            if (_cursor > start)
-            {
-                return new PgnAnnotationGlyphNode($"{text[start.._cursor]}");
-            }
-
-            throw new InvalidDataException($"Malformed NAG node at {_gameChunkStart + _cursor}");
-        }
-
-        private int ReadMoveNumber(ReadOnlySpan<char> text)
-        {
-            var start = _cursor;
-
-            while (char.IsDigit(text[_cursor]))
-            {
-                _cursor++;
-            }
-
-            if (int.TryParse(text[start.._cursor], out var moveNo))
-            {
-                return moveNo;
-            }
-
-            throw new InvalidDataException($"Malformed number at {_gameChunkStart + start}");
-        }
-
-        private PgnMoveNode ReadSanAndSuffix(ReadOnlySpan<char> text, int moveNo, Side side)
-        {
-            var start = _cursor;
-
-            while (start < text.Length && IsValidSanCharacter(text[_cursor]))
-            {
-                _cursor++;
-            }
-
-            if (_cursor - start < 2)
-            {
-                throw new InvalidDataException($"Malformed SAN notation at {_gameChunkStart + _cursor}");
-            }
-
-            var san = text[start.._cursor].ToString();
-            start = _cursor;
-
-            while (start < text.Length && (text[_cursor] == '!' || text[_cursor] == '?'))
-            {
-                _cursor++;
-            }
-
-            if (_cursor - start > 0)
-            {
-                return new PgnMoveNode(moveNo, side, san, text[start.._cursor].ToString());
-            }
-
-            return new PgnMoveNode(moveNo, side, san);
-        }
-
-        private PgnNode ReadCastlingOrResult(ReadOnlySpan<char> text, int moveNo, Side side)
-        {
-            // at that point first symbol is either '0' or 'O'
-            var start = _cursor;
-
-            if (text.PeekAt(start + 1) == '-') // '0-'
-            {
-                if (text.PeekAt(start + 2) == '1') // '0-1'
-                {
-                    _cursor += 3;
-                    return new PgnTerminatorNode(GameResult.Black);
-                }
-                else if (text.PeekAt(start + 2) == text[start]) // '0-0' or 'O-O'
-                {
-                    if (text.PeekAt(start + 3) == '-' && text.PeekAt(start + 4) == text[start]) // '0-0-0' or 'O-O-O'
-                    {
-                        _cursor += 5;
-                        if (text.PeekAt(_cursor) == '+' || text.PeekAt(_cursor) == '#')
-                        {
-                            _cursor++;
-                            return new PgnMoveNode(moveNo, side, $"O-O-O{text[_cursor - 1]}");
-                        }
-
-                        return new PgnMoveNode(moveNo, side, $"O-O-O");
-                    }
-
-                    _cursor += 3;
-
-                    if (text.PeekAt(_cursor) == '+' || text.PeekAt(_cursor) == '#')
-                    {
-                        _cursor++;
-                        return new PgnMoveNode(moveNo, side, $"O-O{text[_cursor - 1]}");
-                    }
-
-                    return new PgnMoveNode(moveNo, side, "O-O");
-                }
-            }
-
-            throw new InvalidDataException($"Malformed result or castling tag at {_gameChunkStart + start}");
-        }
-
-        private PgnNode ReadWhiteOrDrawResult(ReadOnlySpan<char> text)
-        {
-            // at that point first symbol is always '1'
-            if (text.PeekAt(_cursor + 1) == '-') // '1-'
-            {
-                if (text.PeekAt(_cursor + 2) == '0')
-                {
-                    _cursor += 3;
-                    return new PgnTerminatorNode(GameResult.White);
-                }
-            }
-            else // '1/', here we know it is a slash, because we were in the '-' or '/' branch in the caller method
-            {
-                _cursor += 2;
-                Expect(text, '2');
-                Expect(text, '-');
-                Expect(text, '1');
-                Expect(text, '/');
-                Expect(text, '2');
-                return new PgnTerminatorNode(GameResult.Tie);
-            }
-
-            throw new InvalidDataException($"Malformed result tag at {_gameChunkStart + _cursor}");
-        }
-
-        private KeyValuePair<string, string> ReadTagPairStrict(ReadOnlySpan<char> text)
-        {
-            // _cursor starts at the opening '['
-            _cursor++;
-            var tagName = ReadSymbolToken(text);
-            SkipWhitespace(text);
-            Expect(text, '"');
-            var tagString = ReadStringToken(text, '"');
-            SkipWhitespace(text);
-            Expect(text, ']');
-
-            return new KeyValuePair<string, string>(tagName, tagString);
-        }
-
-        private KeyValuePair<string, string> ReadTagPairLax(ReadOnlySpan<char> text)
-        {
-            // _cursor starts at the opening '['
-            _cursor++;
-            var tagName = ReadSymbolToken(text);
-            SkipWhitespace(text);
-            Expect(text, '"');
-
-            var lineEnd = text.Slice(_cursor, Math.Min(192, text.Length - _cursor)).IndexOfAny('\r', '\n');
-
-            if (lineEnd == -1)
-            {
-                throw new InvalidDataException($"Malformed tag at {_gameChunkStart + _cursor}");
-            }
-
-            var closingBracketPos = text.Slice(_cursor, lineEnd).LastIndexOf("\"]", StringComparison.Ordinal);
-
-            if (closingBracketPos == -1)
-            {
-                throw new InvalidDataException($"Malformed tag at {_gameChunkStart + _cursor}");
-            }
-
-            var tagString = text.Slice(_cursor, closingBracketPos).ToString();
-            _cursor += lineEnd + 1;
-
-            return new KeyValuePair<string, string>(tagName, tagString);
-        }
-
-        private string ReadStringToken(ReadOnlySpan<char> text, char endSymbol)
-        {
-            var symbolEscaped = false;
-            var start = _cursor;
-            var unescape = false;
-
-            while (_cursor < text.Length)
-            {
-                if (text[_cursor] == '\\')
-                {
-                    if (symbolEscaped)
-                    {
-                        symbolEscaped = false;
-                    }
-                    else
-                    {
-                        symbolEscaped = true;
-                        unescape = true;
-                    }
-                }
-                else if (text[_cursor] == endSymbol)
-                {
-                    if (symbolEscaped)
-                    {
-                        symbolEscaped = false;
-                    }
-                    else
-                    {
-                        _cursor++;
-
-#pragma warning disable S2583 // Conditionally executed code should be reachable
-                        return unescape
-                            ? Regex.Unescape(text[start..(_cursor - 1)].ToString())
-                            : text[start..(_cursor - 1)].ToString();
-#pragma warning restore S2583 // Conditionally executed code should be reachable
-                    }
-                }
-
-                _cursor++;
-            }
-
-            throw new InvalidDataException($"Malformed string token at {_gameChunkStart + start}");
-        }
-
-        private string ReadSymbolToken(ReadOnlySpan<char> text)
-        {
-            var start = _cursor;
-
-            if (!char.IsLetterOrDigit(text[start]))
-            {
-                throw new InvalidDataException($"Malformed symbol token at {_gameChunkStart + start}");
-            }
-
-            var nextDelimeter = text[start..].IndexOf(' ');
-
-            if (nextDelimeter < 0)
-            {
-                throw new InvalidDataException($"Malformed symbol token at {_gameChunkStart + start}");
-            }
-
-            _cursor += nextDelimeter + 1;
-
-            return text.Slice(start, nextDelimeter).ToString();
-        }
-
-        private void SkipWhitespace(ReadOnlySpan<char> text)
-        {
-            while (_cursor < text.Length && char.IsWhiteSpace(text[_cursor]))
-            {
-                _cursor++;
-            }
-        }
-
-        private void SkipDots(ReadOnlySpan<char> text)
-        {
-            while (_cursor < text.Length && text[_cursor] == '.')
-            {
-                _cursor++;
-            }
-        }
-
-        private void Expect(ReadOnlySpan<char> text, char expected)
-        {
-            if (text[_cursor++] != expected)
-            {
-                throw new InvalidDataException($"Unexpected symbol at {_gameChunkStart + _cursor}");
-            }
-        }
-
-        private static bool IsValidSanStartingCharacter(char c)
-        {
-            var l = char.ToLower(c);
-            return (c >= 'a' && c <= 'h') || l == 'r' || l == 'n' || l == 'b' || l == 'q' || l == 'k';
-        }
-
-        private static bool IsValidSanCharacter(char c)
-        {
-            return IsValidSanStartingCharacter(c) || char.IsDigit(c) || c == 'x' || c == '+' || c == '#' || c == '=';
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (_isDisposed)
-                return;
-
+Start:
             try
             {
-                if (disposing)
+                switch (_reader.Current)
                 {
-                    _reader?.Dispose();
+                    case ' ':
+                    case '\r':
+                    case '\n':
+                    case '\t':
+                        _reader.Advance();
+                        break;
+                    case '[':
+                        var (key, value) = ReadTagPair();
+                        _state.AddTag(key, value);
+                        break;
+                    case '{':
+                        var mlComment = ReadMultilineComment();
+                        _state.AddNode(new PgnCommentNode(mlComment));
+                        break;
+                    case '0':
+                        if (char.IsDigit(_reader.Next) || char.IsWhiteSpace(_reader.Next) || _reader.Next == '.')
+                        {
+                            _state.MoveNo = ReadNumber();
+                            break;
+                        }
+
+                        var terminatorOrCastling = ReadTerminatorOrCastling();
+                        _state.AddNode(terminatorOrCastling);
+
+                        if (terminatorOrCastling is PgnTerminatorNode tn)
+                        {
+                            result = _state.GetGame();
+                            goto ReturnResult;
+                        }
+
+                        _state.Side = _state.Side.Opposite();
+                        break;
+                    case '1':
+                        if (char.IsDigit(_reader.Next) || char.IsWhiteSpace(_reader.Next) || _reader.Next == '.')
+                        {
+                            _state.MoveNo = ReadNumber();
+                            break;
+                        }
+
+                        var terminator = ReadTerminator();
+                        _state.AddNode(terminator);
+                        result = _state.GetGame();
+                        goto ReturnResult;
+                    case '2':
+                    case '3':
+                    case '4':
+                    case '5':
+                    case '6':
+                    case '7':
+                    case '8':
+                    case '9':
+                        _state.MoveNo = ReadNumber();
+                        break;
+                    case '.':
+                        while (_reader.Current == '.')
+                            _reader.Advance();
+                        break;
+                    case '(':
+                        _state.Side = _state.LastMove?.Side ?? _state.Side;
+                        _state.StartVariation();
+                        _reader.Advance();
+                        break;
+                    case ')':
+                        var variation = _state.EndVariation();
+                        _state.Side = _state.LastMove?.Side.Opposite() ?? _state.Side;
+                        _state.AddNode(new PgnVariationNode(variation));
+                        _reader.Advance();
+                        break;
+                    case ';':
+                        var slComment = ReadSingleLineComment();
+                        _state.AddNode(new PgnCommentNode(slComment));
+                        break;
+                    case '*':
+                        _state.AddNode(new PgnTerminatorNode(GameResult.Unknown));
+                        result = _state.GetGame();
+                        _reader.Advance();
+                        goto ReturnResult;
+                    case '\0':
+                        if (_state.Tags.Count > 0 || _state.Moves.Count > 0)
+                        {
+                            _state.AddError(PgnErrorType.UnrecoverableError, "Unterminated game");
+                            result = _state.GetGame();
+                        }
+
+                        goto ReturnResult;
+                    case '+':
+                    case '?':
+                    case '!':
+                        var suffix = ReadSanSuffix();
+                        _state.AddSuffix(suffix);
+                        _reader.Advance(suffix.Length);
+                        break;
+                    case '-':
+                        if (_reader.Next == '-')
+                        {
+                            _reader.Advance(2);
+                            _state.AddMove("--", true);
+                        }
+                        else
+                        {
+                            var suffixM = ReadSanSuffix();
+                            _state.AddSuffix(suffixM);
+                            _reader.Advance(suffixM.Length);
+                        }
+
+                        break;
+                    case 'Z':
+                        if (_reader.Next == '0')
+                        {
+                            _reader.Advance(2);
+                            _state.AddMove("--", true);
+                        }
+
+                        throw new PgnParsingException(PgnErrorType.MovetextError, "Unrecognized SAN");
+                    case '$':
+                        _reader.Advance();
+                        var nag = ReadNumber();
+                        _state.AddNode(new PgnAnnotationGlyphNode(nag.ToString()));
+                        break;
+                    default:
+                        _state.AddMove(ReadSan().ToString(), false);
+                        break;
                 }
             }
-            finally
+            catch (PgnParsingException ex)
             {
-                _isDisposed = true;
+                _state.AddError(ex.Type, ex.Message);
+                var isRecovered = TryRecoverFromError();
 
+                if (!isRecovered)
+                {
+                    _state.AddError(PgnErrorType.UnrecoverableError, "Can't recover from an error. Parsing stopped.");
+                    stopParsing = true;
+                    result = _state.GetGame();
+                    goto ReturnResult;
+                }
+
+                // Can't continue parsing the current game, if the error occured in the movetext.
+                // In case of the recovered tag error, however, we can process with what we have.
+                if (ex.Type == PgnErrorType.MovetextError)
+                {
+                    result = _state.GetGame();
+                    goto ReturnResult;
+                }
+            }
+
+            goto Start;
+
+ReturnResult:
+            if (result != null)
+            {
+                yield return result;
+
+                if (stopParsing)
+                {
+                    yield break;
+                }
+
+                result = null;
+                _state.ResetGame();
+            }
+            else
+            {
+                yield break;
+            }
+        }
+    }
+
+    private ReadOnlySpan<char> ReadSan()
+    {
+        var read = 0;
+
+        while (char.IsAsciiLetterOrDigit(_reader.Peek(read))
+            || _reader.Peek(read) == '='
+            || (_reader.Peek(read) == '-' && _reader.Peek(read + 1) is '0' or 'O'))
+        {
+            read++;
+        }
+
+        if (_reader.Peek(read) == '+' || _reader.Peek(read) == '#')
+            read++;
+
+        var san = _reader.Data[..read];
+        _reader.Advance(read);
+
+        return san;
+    }
+
+    private ReadOnlySpan<char> ReadSanSuffix()
+    {
+        return (_reader.Current, _reader.Next) switch
+        {
+            ('-', '+') => "-+",
+            ('+', '-') => "+-",
+            ('?', '?') => "??",
+            ('?', '!') => "?!",
+            ('!', '?') => "!?",
+            ('!', '!') => "!!",
+            ('!', _) => "!",
+            ('?', _) => "?",
+            _ => throw new PgnParsingException(PgnErrorType.MovetextError, "Unrecognized SAN suffix"),
+        };
+    }
+
+    private int ReadNumber()
+    {
+        var read = 0;
+
+        while (char.IsDigit(_reader.Peek(read)))
+            read++;
+
+        if (!int.TryParse(_reader.Data[..read], out var moveNo))
+            throw new PgnParsingException(PgnErrorType.MovetextError, "Invalid number token");
+
+        _reader.Advance(read);
+
+        if (_reader.Current != ' ' && _reader.Current != '.')
+            throw new PgnParsingException(PgnErrorType.MovetextError, "Invalid character after the number token");
+
+        return moveNo;
+    }
+
+    private PgnTerminatorNode ReadTerminator()
+    {
+        _reader.Advance(1);
+
+        if (_reader.StartsWith("-0"))
+        {
+            _reader.Advance(2);
+            return new PgnTerminatorNode(GameResult.White);
+        }
+
+        if (_reader.StartsWith("/2-1/2"))
+        {
+            _reader.Advance(6);
+            return new PgnTerminatorNode(GameResult.Tie);
+        }
+
+        throw new PgnParsingException(PgnErrorType.MovetextError, "Invalid game terminator");
+    }
+
+    private PgnNode ReadTerminatorOrCastling()
+    {
+        _reader.Advance(1);
+        var castleLong = false;
+
+        // '0-0'
+        if (_reader.StartsWith("-0"))
+        {
+            _reader.Advance(2);
+            PgnNode result;
+
+            // '0-0-0'
+            if (_reader.StartsWith("-0"))
+            {
+                castleLong = true;
+                _reader.Advance(2);
+            }
+
+            // '0-0+', '0-0#', '0-0-0+' or ''0-0-0#'
+            if (_reader.Current == '+' || _reader.Current == '#')
+            {
+                result = castleLong
+                    ? new PgnMoveNode(_state.MoveNo, _state.Side, $"O-O-O{_reader.Current}")
+                    : new PgnMoveNode(_state.MoveNo, _state.Side, $"O-O{_reader.Current}");
+                _reader.Advance();
+            }
+            else
+            {
+                result = castleLong
+                    ? new PgnMoveNode(_state.MoveNo, _state.Side, "O-O-O")
+                    : new PgnMoveNode(_state.MoveNo, _state.Side, "O-O");
+            }
+
+            return result;
+        }
+        else if (_reader.StartsWith("-1"))
+        {
+            _reader.Advance(2);
+            return new PgnTerminatorNode(GameResult.Black);
+        }
+
+        throw new PgnParsingException(PgnErrorType.MovetextError, "Invalid castling/game terminator");
+    }
+
+    private string ReadSingleLineComment()
+    {
+        Debug.Assert(_reader.Current == ';');
+        _reader.Advance();
+        var idx = _reader.IndexOfAny(s_newLineSymbols);
+
+        if (idx == -1)
+            return _reader.Data.ToString();
+
+        var text = _reader.GetText(idx);
+        _reader.Advance(idx + 1);
+
+        return text;
+    }
+
+    private string ReadMultilineComment()
+    {
+        Debug.Assert(_reader.Current == '{');
+        _reader.Advance();
+        var idx = _reader.IndexOf('}');
+
+        if (idx == -1)
+            throw new PgnParsingException(PgnErrorType.MovetextError, "Unterminated multiline comment");
+
+        var text = _reader.GetText(idx);
+        _reader.Advance(idx + 1);
+
+        return text;
+    }
+
+    private (string Key, string Value) ReadTagPair()
+    {
+        Debug.Assert(_reader.Current == '[');
+        _reader.Advance();
+
+        var key = ReadTagKey();
+        SkipWhitespace();
+
+        if (_reader.Current != '"')
+            throw new PgnParsingException(PgnErrorType.TagError, "Unexpected symbol instead of tag value");
+
+        var value = ReadTagValue();
+        SkipWhitespace();
+
+        if (_reader.Current != ']')
+            throw new PgnParsingException(PgnErrorType.TagError, "Unclosed tag");
+
+        _reader.Advance();
+
+        return (key, value);
+    }
+
+    private string ReadTagKey()
+    {
+        SkipWhitespaceStrict();
+
+        if (!char.IsAsciiLetterOrDigit(_reader.Current))
+            throw new PgnParsingException(PgnErrorType.TagError, "Forbidden character in the tag key");
+
+        var idx = _reader.IndexOfAny(s_tagKeyTerminators);
+
+        if (idx < 0)
+            throw new PgnParsingException(PgnErrorType.TagError, "Tag key can't be empty");
+
+        if (idx > MaxTokenLength)
+            throw new PgnParsingException(PgnErrorType.TagError, "Tag key is too long");
+
+        var text = _reader.GetText(idx);
+        _reader.Advance(idx);
+
+        return text;
+    }
+
+    private string ReadTagValue()
+    {
+        Debug.Assert(_reader.Current == '"');
+        _reader.Advance();
+
+        // fast path
+        var idxQuoteOrBackslash = _reader.IndexOfAny(s_tagValueTerminators);
+
+        if (idxQuoteOrBackslash == -1)
+            throw new PgnParsingException(PgnErrorType.TagError, "Unclosed tag value");
+
+        if (_reader.Data[idxQuoteOrBackslash] == '"')
+        {
+            // Fast path for values without escape symbols            
+            var value = _reader.Data[..idxQuoteOrBackslash].ToString();
+            _reader.Advance(idxQuoteOrBackslash + 1);
+            return value;
+        }
+
+        var written = 0;
+        var isEscaped = false;
+        var isCompleted = false;
+
+        while (_reader.Current != '\0' && written < MaxTokenLength)
+        {
+            if (_reader.Current == '\\')
+            {
+                if (isEscaped)
+                {
+                    _buffer[written++] = _reader.Current;
+                }
+
+                isEscaped = !isEscaped;
+            }
+            else if (_reader.Current == '"')
+            {
+                if (isEscaped)
+                {
+                    _buffer[written++] = _reader.Current;
+                    isEscaped = false;
+                }
+                else
+                {
+                    isCompleted = true;
+                    // Advance past the closing quote
+                    _reader.Advance(1);
+                    break;
+                }
+            }
+            else if (_reader.Current == '\n')
+            {
+                throw new PgnParsingException(PgnErrorType.TagError, "Invalid character inside a string token");
+            }
+            else
+            {
+                if (isEscaped)
+                    throw new PgnParsingException(PgnErrorType.TagError, "Invalid escape sequence inside a tag value");
+
+                _buffer[written++] = _reader.Current;
+            }
+
+            _reader.Advance(1);
+        }
+
+        if (isCompleted)
+            return _buffer.AsSpan(0, written).ToString();
+        else if (written == MaxTokenLength)
+            throw new PgnParsingException(PgnErrorType.TagError, "Tag value is too long");
+        else if (written == 0)
+            throw new PgnParsingException(PgnErrorType.TagError, "Tag value is empty");
+
+        return string.Empty;
+    }
+
+    private bool TryRecoverFromError()
+    {
+        // Try to find either a new tag ('[') or a first move ('1.'), that follow a new line
+        while (_reader.TryAdvanceTo('\n'))
+        {
+            _reader.Advance(1);
+            if (_reader.Current == '['
+                || (_reader.Current == '1' && _reader.Next == '.'))
+            {
+                return true;
             }
         }
 
-        public void Dispose()
+        return false;
+    }
+
+    private void SkipWhitespace()
+    {
+        while (_reader.Current == ' ' || _reader.Current == '\r' || _reader.Current == '\n' || _reader.Current == '\t')
+            _reader.Advance();
+    }
+
+    private void SkipWhitespaceStrict()
+    {
+        while (_reader.Current == ' ')
+            _reader.Advance();
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!_disposedValue)
         {
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
+            if (disposing)
+            {
+                _reader.Dispose();
+            }
+
+            _disposedValue = true;
         }
+    }
+
+    public void Dispose()
+    {
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
     }
 }
