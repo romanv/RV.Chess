@@ -26,6 +26,10 @@ public class PgnParser : IDisposable
         _reader = reader;
     }
 
+    public long Length => _reader.TotalLength;
+
+    public long Processed => _reader.Processed;
+
     public static PgnParser FromFile(string path, int bufferSize = DefaultBufferSize)
     {
         if (!File.Exists(path))
@@ -437,7 +441,7 @@ ReturnResult:
 
         if (_reader.Data[idxQuoteOrBackslash] == '"')
         {
-            // Fast path for values without escape symbols            
+            // Fast path for values without escape symbols
             var value = _reader.Data[..idxQuoteOrBackslash].ToString();
             _reader.Advance(idxQuoteOrBackslash + 1);
             return value;

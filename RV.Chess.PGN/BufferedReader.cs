@@ -15,6 +15,7 @@ internal class BufferedReader : IDisposable
     private int _position = 0;
     private int _filledBufferSize;
     private bool _disposedValue;
+    private long _readTotal = 0;
 
     internal BufferedReader(Stream stream, int bufferSize)
     {
@@ -23,6 +24,7 @@ internal class BufferedReader : IDisposable
         _fullBufferSize = Math.Min(bufferSize, stream.Length);
         _buffer = new char[_fullBufferSize];
         _filledBufferSize = _sr.Read(_buffer, 0, (int)_fullBufferSize);
+        _readTotal = _filledBufferSize;
     }
 
     internal bool IsReadAll => _stream.Position >= _stream.Length;
@@ -32,6 +34,10 @@ internal class BufferedReader : IDisposable
     internal char Next => Peek(1);
 
     internal long Remaining => _filledBufferSize - _position + (_stream.Length - _stream.Position);
+
+    internal long Processed => _readTotal - (_filledBufferSize - _position);
+
+    internal long TotalLength => _stream.Length;
 
     internal ReadOnlySpan<char> Data => _buffer.AsSpan()[_position.._filledBufferSize];
 
@@ -185,6 +191,7 @@ internal class BufferedReader : IDisposable
         _streamOffset += _position;
         _position = 0;
         _filledBufferSize = rest.Length + read;
+        _readTotal += read;
 
         return read > 0;
     }
