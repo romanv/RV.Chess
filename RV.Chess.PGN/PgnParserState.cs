@@ -60,7 +60,8 @@ internal class PgnParserState
     {
         if (LastMove == null)
         {
-            throw new InvalidOperationException("Can't add the suffix - last node is not a move node");
+            throw new PgnParsingException(
+                PgnErrorType.MovetextError, "Can't add the suffix - last node is not a move node");
         }
 
         LastMove.Annotation = suffix.ToString();
