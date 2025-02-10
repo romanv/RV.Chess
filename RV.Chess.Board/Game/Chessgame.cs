@@ -113,7 +113,16 @@ namespace RV.Chess.Board.Game
 
         public bool TryMakeMove(string san, bool fillSan = true)
         {
-            var legal = GenerateMoves();
+            var piece = san[0] switch
+            {
+                'N' => PieceType.Knight,
+                'R' => PieceType.Rook,
+                'K' => PieceType.King,
+                'Q' => PieceType.Queen,
+                _ => PieceType.None,
+            };
+
+            var legal = GenerateMoves(piece);
 
             for (var i = 0; i < legal.Length; i++)
             {
@@ -131,7 +140,8 @@ namespace RV.Chess.Board.Game
 
         public bool TryMakeMove(string from, string to, PieceType promoteTo = PieceType.None, bool fillSan = true)
         {
-            var legal = GenerateMoves();
+            var piece = Board.GetPieceTypeAt(Coordinates.SquareToIdx(from));
+            var legal = GenerateMoves(piece);
             var matching = Find(legal, from, to, promoteTo);
 
             if (matching == null)
@@ -145,7 +155,8 @@ namespace RV.Chess.Board.Game
 
         public bool TryMakeMove(int from, int to, PieceType promoteTo = PieceType.None, bool fillSan = true)
         {
-            var legal = GenerateMoves();
+            var piece = Board.GetPieceTypeAt(from);
+            var legal = GenerateMoves(piece);
             var matching = Find(legal, from, to, promoteTo);
 
             if (matching == null)
@@ -239,10 +250,14 @@ namespace RV.Chess.Board.Game
 
         internal Span<FastMove> GenerateMoves() => GenerateMoves(_moves, Board, SideToMove);
 
+        internal Span<FastMove> GenerateMoves(PieceType pieceFilter)
+            => GenerateMoves(_moves, Board, SideToMove, pieceFilter);
+
         internal Span<FastMove> GenerateMoves(
             Span<FastMove> moves,
             BoardState branchBoard,
-            Side side)
+            Side side,
+            PieceType pieceFilter = PieceType.None)
         {
             var ownKingSquare = branchBoard.GetOwnKingSquare(side);
             var checkers = Movement.GetSquareAttackers(branchBoard, ownKingSquare, side.Opposite());
@@ -269,7 +284,9 @@ namespace RV.Chess.Board.Game
             else
             {
                 var pinned = Movement.GetPinnedPieces(branchBoard, side);
-                cursor = GeneratePseudoLegalMoves(side, moves, cursor, branchBoard, pinned);
+                cursor = pieceFilter == PieceType.None
+                    ? GeneratePseudoLegalMoves(side, moves, cursor, branchBoard, pinned)
+                    : GeneratePseudoLegalMovesForPiece(side, moves, cursor, branchBoard, pinned, pieceFilter);
                 legalCount = VerifyMoves(moves[..cursor], branchBoard, side);
             }
 
@@ -400,6 +417,61 @@ namespace RV.Chess.Board.Game
                 pinned, enemyKingSquare, CastlingRights, epSquare);
             cursor = Movement.GetKingMoves(side, moves, cursor, branchBoard,
                 CastlingRights, epSquare);
+
+            return cursor;
+        }
+
+        private int GeneratePseudoLegalMovesForPiece(
+            Side side,
+            Span<FastMove> moves,
+            int cursor,
+            BoardState branchBoard,
+            ulong pinned,
+            PieceType piece)
+        {
+            var allTargets = ~branchBoard.Occupied[(int)side];
+            var captureTargets = allTargets & (branchBoard.Occupied[(int)side ^ 1] | EpSquareMask);
+            var moveTargets = allTargets ^ captureTargets;
+            var enemyKingSquare = branchBoard.GetEnemyKingSquare(side);
+            var epSquare = BitOperations.TrailingZeroCount(EpSquareMask);
+
+            switch (piece)
+            {
+                case PieceType.Pawn:
+                    if (side == Side.White)
+                    {
+                        cursor = Movement.GetWhitePawnMoves(moveTargets, captureTargets, moves, cursor,
+                            branchBoard, pinned, CastlingRights, epSquare);
+                    }
+                    else
+                    {
+                        cursor = Movement.GetBlackPawnMoves(moveTargets, captureTargets, moves, cursor,
+                            branchBoard, pinned, CastlingRights, epSquare);
+                    }
+                    break;
+                case PieceType.King:
+                    cursor = Movement.GetKingMoves(side, moves, cursor, branchBoard,
+                        CastlingRights, epSquare);
+                    break;
+                case PieceType.Queen:
+                    cursor = Movement.GetQueenMoves(allTargets, side, moves, cursor, branchBoard,
+                        pinned, enemyKingSquare, CastlingRights, epSquare);
+                    break;
+                case PieceType.Rook:
+                    cursor = Movement.GetRookMoves(allTargets, side, moves, cursor, branchBoard,
+                        pinned, enemyKingSquare, CastlingRights, epSquare);
+                    break;
+                case PieceType.Bishop:
+                    cursor = Movement.GetBishopMoves(allTargets, side, moves, cursor, branchBoard,
+                        pinned, enemyKingSquare, CastlingRights, epSquare);
+                    break;
+                case PieceType.Knight:
+                    cursor = Movement.GetKnightMoves(allTargets, side, moves, cursor, branchBoard,
+                        pinned, enemyKingSquare, CastlingRights, epSquare);
+                    break;
+                default:
+                    break;
+            }
 
             return cursor;
         }
