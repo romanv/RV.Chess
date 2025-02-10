@@ -1,8 +1,8 @@
 ﻿namespace RV.Chess.PGN.Utils;
 
-internal static class CommentMerger
+public static class CommentMerger
 {
-    internal static List<string> MergeInto(List<string> comments, string newComment)
+    public static List<string> MergeInto(List<string> comments, string newComment)
     {
         var merged = new List<string>(comments);
         var useComment = true;
