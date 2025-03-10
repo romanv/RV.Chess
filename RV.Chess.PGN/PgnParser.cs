@@ -216,7 +216,7 @@ Start:
                     goto ReturnResult;
                 }
 
-                // Can't continue parsing the current game, if the error occured in the movetext.
+                // Can't continue parsing the current game, if the error occurred in the movetext.
                 // In case of the recovered tag error, however, we can process with what we have.
                 if (ex.Type == PgnErrorType.MovetextError)
                 {
