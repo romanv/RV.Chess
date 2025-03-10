@@ -78,6 +78,15 @@ Start:
                         break;
                     case '[':
                         var (key, value) = ReadTagPair();
+
+                        if (key == "FEN")
+                        {
+                            var parts = value.Split(' ');
+                            if (parts.Length < 2)
+                                throw new PgnParsingException(PgnErrorType.MovetextError, "Malformed FEN tag");
+                            _state.Side = parts[1] == "b" ? Side.Black : Side.White;
+                        }
+
                         _state.AddTag(key, value);
                         break;
                     case '{':

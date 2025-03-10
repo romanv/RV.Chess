@@ -155,6 +155,16 @@ public class ParserTests
         Assert.Equal(Side.White, (game.Moves[2] as PgnMoveNode)!.Side);
     }
 
+    [Theory]
+    [InlineData("[FEN \"r2qr1k1/1b3ppp/p4n2/1ppPn3/5B2/2P5/PPB2PPP/RN1QR1K1 b - - 1 1\"]\r\n15...Qxd5 16.Qxd5 *", Side.Black)]
+    [InlineData("[FEN \"r2qr1k1/1b3ppp/p4n2/1ppPn3/5B2/2P5/PPB2PPP/RN1QR1K1 w - - 1 1\"]\r\n15.Qxd5 16.Qxd5 *", Side.White)]
+    [Trait("Category", "MoveSides")]
+    internal void CorrectMoveSideWithCustomStartingPosition(string position, Side expected)
+    {
+        var game = GetGame(position);
+        Assert.Equal(expected, (game.Moves[0] as PgnMoveNode)!.Side);
+    }
+
     [Fact]
     [Trait("Category", "NAG")]
     internal void NagAnnotation()
