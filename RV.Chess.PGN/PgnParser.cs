@@ -52,6 +52,19 @@ public class PgnParser : IDisposable
         return new PgnParser(reader);
     }
 
+    public static PgnParser FromStream(FileStream fileStream, int bufferSize = DefaultBufferSize)
+    {
+        if (!fileStream.CanRead)
+            throw new InvalidOperationException("Can't read from file stream");
+
+        if (fileStream.CanSeek)
+            fileStream.Seek(0, SeekOrigin.Begin);
+
+        var reader = new BufferedReader(fileStream, bufferSize);
+
+        return new PgnParser(reader);
+    }
+
     public IEnumerable<PgnGame> GetGames()
     {
         if (_requiresRewind)
