@@ -7,6 +7,7 @@ namespace RV.Chess.PGN;
 internal class BufferedReader : IDisposable
 {
     private readonly Stream _stream;
+    private readonly bool _disposeStream;
     private readonly long _fullBufferSize;
     private readonly char[] _buffer;
     private readonly StreamReader _sr;
@@ -17,9 +18,10 @@ internal class BufferedReader : IDisposable
     private bool _disposedValue;
     private long _readTotal = 0;
 
-    internal BufferedReader(Stream stream, int bufferSize)
+    internal BufferedReader(Stream stream, int bufferSize, bool disposeStream = true)
     {
         _stream = stream;
+        _disposeStream = disposeStream;
         _sr = new StreamReader(_stream, Encoding.UTF8, bufferSize: bufferSize);
         _fullBufferSize = Math.Min(bufferSize, stream.Length);
         _buffer = new char[_fullBufferSize];
@@ -202,7 +204,8 @@ internal class BufferedReader : IDisposable
         {
             if (disposing)
             {
-                _stream.Dispose();
+                if (_disposeStream)
+                    _stream.Dispose();
             }
 
             _disposedValue = true;

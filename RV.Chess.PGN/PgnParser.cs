@@ -60,7 +60,7 @@ public class PgnParser : IDisposable
         if (fileStream.CanSeek)
             fileStream.Seek(0, SeekOrigin.Begin);
 
-        var reader = new BufferedReader(fileStream, bufferSize);
+        var reader = new BufferedReader(fileStream, bufferSize, false);
 
         return new PgnParser(reader);
     }
