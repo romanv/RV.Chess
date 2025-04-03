@@ -92,14 +92,31 @@ namespace RV.Chess.Board.Utils
             {
                 switch (fen[pos])
                 {
-                    case 'r': case 'n': case 'b': case 'q': case 'k': case 'p':
-                    case 'R': case 'N': case 'B': case 'Q': case 'K': case 'P':
+                    case 'r':
+                    case 'n':
+                    case 'b':
+                    case 'q':
+                    case 'k':
+                    case 'p':
+                    case 'R':
+                    case 'N':
+                    case 'B':
+                    case 'Q':
+                    case 'K':
+                    case 'P':
                         var type = PieceTypeFromChar(fen[pos]);
                         var side = char.IsLower(fen[pos]) ? Side.Black : Side.White;
                         game.Board.AddPiece(type, side, rank * 8 + file);
                         file++;
                         break;
-                    case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8':
+                    case '1':
+                    case '2':
+                    case '3':
+                    case '4':
+                    case '5':
+                    case '6':
+                    case '7':
+                    case '8':
                         file += (int)char.GetNumericValue(fen[pos]);
                         break;
                     case '/':
@@ -127,7 +144,7 @@ namespace RV.Chess.Board.Utils
 
             var parts = fen.Trim().Split(' ');
 
-            if (parts.Length != 6)
+            if (parts.Length < 3)
             {
                 return false;
             }
@@ -146,44 +163,39 @@ namespace RV.Chess.Board.Utils
             }
 
             if (TryParseFenCastling(parts[2], out var rights))
-            {
                 game.CastlingRights = rights;
-            }
             else
-            {
                 return false;
+
+            if (parts.Length >= 4)
+            {
+                if (TryParseFenEnPassant(parts[3], out var mask))
+                    game.EpSquareMask = mask;
+                else
+                    return false;
             }
 
-            if (TryParseFenEnPassant(parts[3], out var mask))
+            if (parts.Length >= 5)
             {
-                game.EpSquareMask = mask;
-            }
-            else
-            {
-                return false;
-            }
-
-            if (int.TryParse(parts[4], out var halfMoveClockStart))
-            {
-                game.HalfMoveClockStart = halfMoveClockStart;
-            }
-            else
-            {
-                return false;
+                if (int.TryParse(parts[4], out var halfMoveClockStart))
+                    game.HalfMoveClockStart = halfMoveClockStart;
+                else
+                    return false;
             }
 
-            if (int.TryParse(parts[5], out var fullMoveNumberPart))
+            if (parts.Length >= 6)
             {
-                if (fullMoveNumberPart < 1)
+                if (int.TryParse(parts[5], out var fullMoveNumberPart))
+                {
+                    if (fullMoveNumberPart < 1)
+                        return false;
+
+                    game.CurrentMoveNumber = fullMoveNumberPart;
+                }
+                else
                 {
                     return false;
                 }
-
-                game.CurrentMoveNumber = fullMoveNumberPart;
-            }
-            else
-            {
-                return false;
             }
 
             game._moveList.Clear();
