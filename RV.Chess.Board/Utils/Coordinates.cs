@@ -20,7 +20,12 @@
             ? SQUARES[idx]
             : throw new InvalidDataException($"Bad square index ({idx}). Must be between 0 and 63");
 
-        public static int SquareToIdx(string square) => Array.IndexOf(SQUARES, square);
+        public static int SquareToIdx(string square)
+        {
+            var file = square[0] - 97;
+            var rank = square[1] - 49;
+            return rank * 8 + file;
+        }
 
         public static char SquareIdxToFile(int idx)
         {
