@@ -44,6 +44,7 @@ namespace RV.Chess.Board.Game
         public void Reset()
         {
             _moveList.Clear();
+            Moves.Clear();
             Board.Reset();
             CurrentMoveNumber = 1;
             SideToMove = Side.White;
