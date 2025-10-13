@@ -22,9 +22,13 @@
 
         public static int SquareToIdx(string square)
         {
+            if (square.Length != 2)
+                return -1;
+
             var file = square[0] - 97;
             var rank = square[1] - 49;
-            return rank * 8 + file;
+            var idx = rank * 8 + file;
+            return idx > -1 && idx < 64 ? idx : -1;
         }
 
         public static char SquareIdxToFile(int idx)
@@ -35,6 +39,10 @@
 
         public static int SquareIdxToRank(int idx) => (idx / 8) + 1;
 
-        public static bool IsValidSquare(string square) => SquareToIdx(square) > -1;
+        public static bool IsValidSquare(string square)
+        {
+            var idx = SquareToIdx(square);
+            return idx > -1 && idx < 64;
+        }
     }
 }
