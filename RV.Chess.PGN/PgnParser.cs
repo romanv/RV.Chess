@@ -178,6 +178,9 @@ Start:
 
                         goto ReturnResult;
                     case '+':
+                    case '±':
+                    case '⩲':
+                    case '⩱':
                     case '?':
                     case '!':
                         var suffix = ReadSanSuffix();
@@ -288,10 +291,19 @@ ReturnResult:
             ('+', '-') => "+-",
             ('?', '?') => "??",
             ('?', '!') => "?!",
+            ('?', '±') => "?±",
+            ('?', '⩲') => "?⩲",
+            ('?', '⩱') => "?⩱",
             ('!', '?') => "!?",
             ('!', '!') => "!!",
+            ('!', '±') => "!±",
+            ('!', '⩲') => "!⩲",
+            ('!', '⩱') => "!⩱",
             ('!', _) => "!",
             ('?', _) => "?",
+            ('±', _) => "±",
+            ('⩲', _) => "⩲",
+            ('⩱', _) => "⩱",
             _ => throw new PgnParsingException(PgnErrorType.MovetextError, "Unrecognized SAN suffix"),
         };
     }
