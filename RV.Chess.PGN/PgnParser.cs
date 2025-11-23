@@ -320,8 +320,16 @@ ReturnResult:
 
         _reader.Advance(read);
 
-        if (_reader.Current != ' ' && _reader.Current != '.' && _reader.Current != '\r' && _reader.Current != '\n')
+        if (
+            _reader.Current != ' '
+            && _reader.Current != '.'
+            && _reader.Current != ')'
+            && _reader.Current != '\r'
+            && _reader.Current != '\n'
+        )
+        {
             throw new PgnParsingException(PgnErrorType.MovetextError, "Invalid character after the number token");
+        }
 
         return moveNo;
     }
