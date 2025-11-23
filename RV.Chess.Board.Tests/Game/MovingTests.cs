@@ -200,3 +200,10 @@ namespace RV.Chess.Board.Tests
         }
     }
 }
+        [Fact]
+        public void SanDisambiguation_AcceptsUnnecessaryFileDisambiguation()
+        {
+            var fen = "r1bq1b1r/ppp3pp/2n1k3/3np3/2B5/2N2Q2/PPPP1PPP/R1B1K2R b KQ - 3 8";
+            var game = new Chessgame(fen);
+            Assert.True(game.TryMakeMove("Ncb4"));
+        }

@@ -134,6 +134,16 @@ namespace RV.Chess.Board.Game
                     MakeMoveOnBoard(legal[i], legal, fillSan);
                     return true;
                 }
+                else if (san[0] == fmSan[0] && san[1] >= 'a' && san[1] <= 'h' && san[2] >= 'a' && san[2] <= 'h')
+                {
+                    // Check for unnecessary disambiguation
+                    var sanNoDisambiguation = san[..1] + san[2..];
+                    if (sanNoDisambiguation == fmSan)
+                    {
+                        MakeMoveOnBoard(legal[i], legal, fillSan);
+                        return true;
+                    }
+                }
             }
 
             return false;
