@@ -26,5 +26,19 @@
 
         public static char ToChar(this PieceType type, Side side) =>
             side == Side.White ? type.TypeChar() : char.ToLower(type.TypeChar());
+
+        public static PieceType CharToPieceType(char c)
+        {
+            return c switch
+            {
+                'Q' or 'q' => PieceType.Queen,
+                'K' or 'k' => PieceType.King,
+                'R' or 'r' => PieceType.Rook,
+                'N' or 'n' => PieceType.Knight,
+                'B' or 'b' => PieceType.Bishop,
+                'P' or 'p' => PieceType.Pawn,
+                _ => PieceType.None
+            };
+        }
     }
 }
