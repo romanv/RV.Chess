@@ -1,4 +1,5 @@
-﻿using RV.Chess.Board.Utils;
+﻿using RV.Chess.Board.Game;
+using RV.Chess.Board.Utils;
 using RV.Chess.Shared.Types;
 
 namespace RV.Chess.Board.Types
@@ -71,6 +72,55 @@ namespace RV.Chess.Board.Types
         public override string ToString()
         {
             return string.IsNullOrEmpty(San) ? $"{From}{To}" : San;
+        }
+
+        internal FastMove ToFastMove(Chessgame gameState)
+        {
+            MoveType moveType;
+
+            if (PromoteTo != PieceType.None)
+            {
+                moveType = PromoteTo switch
+                {
+                    PieceType.Queen => MoveType.PromoteQ,
+                    PieceType.Rook => MoveType.PromoteR,
+                    PieceType.Bishop => MoveType.PromoteB,
+                    PieceType.Knight => MoveType.PromoteN,
+                    _ => throw new ArgumentException("Unexpected promotion piece type"),
+                };
+            }
+            else if (Castling != CastlingRights.None)
+            {
+                moveType = (Castling == CastlingRights.WhiteKingside || Castling == CastlingRights.BlackKingside)
+                    ? MoveType.CastleShort
+                    : MoveType.CastleLong;
+            }
+            else
+            {
+                moveType = Piece switch
+                {
+                    PieceType.King => MoveType.King,
+                    PieceType.Queen => MoveType.Queen,
+                    PieceType.Rook => MoveType.Rook,
+                    PieceType.Bishop => MoveType.Bishop,
+                    PieceType.Knight => MoveType.Knight,
+                    PieceType.Pawn => MoveType.Pawn,
+                    _ => throw new ArgumentException("Invalid piece type for the move"),
+                };
+            }
+
+            var capturedPiece = gameState.Board.GetPieceTypeAt(ToIdx);
+
+            return FastMove.Create(
+                FromIdx,
+                ToIdx,
+                moveType,
+                Side,
+                IsCheck,
+                IsMate,
+                capturedPiece,
+                gameState.EpSquare,
+                gameState.CastlingRights);
         }
 
         private static CastlingRights GetCastling(FastMove m)

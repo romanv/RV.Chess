@@ -182,6 +182,12 @@ namespace RV.Chess.Board.Game
         public bool TryMakeMove(Move move, bool fillSan = true) =>
             TryMakeMove(move.From, move.To, move.PromoteTo, fillSan);
 
+        public void MakeForcedMoveUnsafe(Move move)
+        {
+            var fastMove = move.ToFastMove(this);
+            MakeMoveOnBoard(fastMove, move.San);
+        }
+
         public bool TryMakeNullMove()
         {
             MakeNullMove();
@@ -234,7 +240,6 @@ namespace RV.Chess.Board.Game
                 _incrementalHash ^= Zobrist.GetPieceHash(last.From, last.OriginalPiece, last.Side);
             }
 
-            if (last.Type == MoveType.Pawn && last.IsDoublePawnMove)
             // Ep mask would have been set only if the last move could have been an Ep move
             // and potential capturing pawns are still attacking potential Ep square
             var epMask = last.PotentialEpCapturersMask;
@@ -523,6 +528,25 @@ namespace RV.Chess.Board.Game
 
         private void MakeMoveOnBoard(FastMove move, Span<FastMove> allLegal, bool fillSan)
         {
+            MakeMoveOnBoard(move);
+            var m = Move.FromFastMove(move);
+
+            if (fillSan)
+                m.San = SanGenerator.Generate(move, allLegal);
+
+            Moves.Add(m);
+        }
+
+        private void MakeMoveOnBoard(FastMove move, string san)
+        {
+            MakeMoveOnBoard(move);
+            var m = Move.FromFastMove(move);
+            m.San = san;
+            Moves.Add(m);
+        }
+
+        private void MakeMoveOnBoard(FastMove move)
+        {
             var pieceType = Board.GetPieceTypeAt(move.From);
             var pieceSide = Board.GetPieceSideAt(move.From);
 
@@ -592,21 +616,12 @@ namespace RV.Chess.Board.Game
             _incrementalHash ^= Zobrist.WhiteTurn;
 
             _moveList.Push(move);
-            var m = Move.FromFastMove(move);
-
-            if (fillSan)
-            {
-                m.San = SanGenerator.Generate(move, allLegal);
-            }
-
-            Moves.Add(m);
         }
 
         private void UpdateEnPassantSquare(Side side, FastMove move)
         {
             if (side == Side.White && move.SourceRank == 2 && move.TargetRank == 4)
             {
-                EpSquareMask = move.FromMask << 8;
                 var potentialEpSquareMask = move.FromMask << 8;
                 if ((Board.GetPieceBoard(PieceType.Pawn, Side.Black) & move.PotentialEpCapturersMask) > 0)
                     EpSquareMask = potentialEpSquareMask;
@@ -615,7 +630,6 @@ namespace RV.Chess.Board.Game
             }
             else if (side == Side.Black && move.SourceRank == 7 && move.TargetRank == 5)
             {
-                EpSquareMask = move.FromMask >> 8;
                 var potentialEpSquareMask = move.FromMask >> 8;
                 if ((Board.GetPieceBoard(PieceType.Pawn, Side.White) & move.PotentialEpCapturersMask) > 0)
                     EpSquareMask = potentialEpSquareMask;
