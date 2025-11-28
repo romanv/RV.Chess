@@ -10,11 +10,11 @@ namespace RV.Chess.Board.Tests
         [Theory]
         [InlineData("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             "e2", "e4",
-            "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
+            "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"
         )]
         [InlineData("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
             "d7", "d5",
-            "rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2"
+            "rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2"
         )]
         [InlineData("rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2",
             "f1", "b5",
@@ -25,6 +25,22 @@ namespace RV.Chess.Board.Tests
             "r3k2r/pp2ppbp/2npb1p1/q7/3NP3/2N1BP2/PPPQ2PP/1K1R3R b kq - 4 12"
         )]
         public void Coordinates_Basic(string fen, string from, string to, string fenAfter)
+        {
+            var game = new Chessgame(fen);
+            game.MakeMove(from, to);
+            Assert.Equal(fenAfter, game.Fen);
+        }
+
+        [Theory]
+        [InlineData("rnbqkbnr/pp1ppppp/2p5/4P3/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 2",
+            "d7", "d5",
+            "rnbqkbnr/pp2pppp/2p5/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3"
+        )]
+        [InlineData("rnbqkbnr/pp2pppp/2p5/4P3/3p4/7P/PPPP1PP1/RNBQKBNR w KQkq - 0 4",
+            "c2", "c4",
+            "rnbqkbnr/pp2pppp/2p5/4P3/2Pp4/7P/PP1P1PP1/RNBQKBNR b KQkq c3 0 4"
+        )]
+        public void Coordinates_EnPassant(string fen, string from, string to, string fenAfter)
         {
             var game = new Chessgame(fen);
             game.MakeMove(from, to);
@@ -198,8 +214,7 @@ namespace RV.Chess.Board.Tests
             Assert.Equal(fen, game.Fen);
             Assert.Equal(moveCount - 1, game._moveList.Count);
         }
-    }
-}
+
         [Fact]
         public void SanDisambiguation_AcceptsUnnecessaryFileDisambiguation()
         {
@@ -207,3 +222,5 @@ namespace RV.Chess.Board.Tests
             var game = new Chessgame(fen);
             Assert.True(game.TryMakeMove("Ncb4"));
         }
+    }
+}

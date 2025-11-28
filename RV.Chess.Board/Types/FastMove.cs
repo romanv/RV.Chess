@@ -113,6 +113,30 @@ namespace RV.Chess.Board.Types
             }
         }
 
+        internal readonly ulong PotentialEpCapturersMask
+        {
+            get
+            {
+                if (Type != MoveType.Pawn)
+                    return 0;
+
+                if (Side == Side.White && SourceRank == 2 && TargetRank == 4)
+                {
+                    var left = From >= 9 ? 1UL << (From + 15) : 0;
+                    var right = From <= 14 ? 1UL << (From + 17) : 0;
+                    return left | right;
+                }
+                else if (Side == Side.Black && SourceRank == 7 && TargetRank == 5)
+                {
+                    var left = From >= 49 ? 1UL << (From - 17) : 0;
+                    var right = From <= 54 ? 1UL << (From - 15) : 0;
+                    return left | right;
+                }
+
+                return 0;
+            }
+        }
+
         internal readonly CastlingRights CastlingRightsBefore => (CastlingRights)(Move >> 27 & 0b1111);
 
         internal readonly PieceType PieceAfterMove => Type.ToPieceType();

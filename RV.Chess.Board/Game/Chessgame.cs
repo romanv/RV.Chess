@@ -235,6 +235,10 @@ namespace RV.Chess.Board.Game
             }
 
             if (last.Type == MoveType.Pawn && last.IsDoublePawnMove)
+            // Ep mask would have been set only if the last move could have been an Ep move
+            // and potential capturing pawns are still attacking potential Ep square
+            var epMask = last.PotentialEpCapturersMask;
+            if (epMask > 0 && (epMask & Board.GetPieceBoard(PieceType.Pawn, last.Side.Opposite())) > 0)
             {
                 _incrementalHash ^= Zobrist.GetEnPassantHash(1UL << last.EpCaptureTarget);
             }
@@ -603,10 +607,20 @@ namespace RV.Chess.Board.Game
             if (side == Side.White && move.SourceRank == 2 && move.TargetRank == 4)
             {
                 EpSquareMask = move.FromMask << 8;
+                var potentialEpSquareMask = move.FromMask << 8;
+                if ((Board.GetPieceBoard(PieceType.Pawn, Side.Black) & move.PotentialEpCapturersMask) > 0)
+                    EpSquareMask = potentialEpSquareMask;
+                else
+                    EpSquareMask = 0;
             }
             else if (side == Side.Black && move.SourceRank == 7 && move.TargetRank == 5)
             {
                 EpSquareMask = move.FromMask >> 8;
+                var potentialEpSquareMask = move.FromMask >> 8;
+                if ((Board.GetPieceBoard(PieceType.Pawn, Side.White) & move.PotentialEpCapturersMask) > 0)
+                    EpSquareMask = potentialEpSquareMask;
+                else
+                    EpSquareMask = 0;
             }
             else
             {
