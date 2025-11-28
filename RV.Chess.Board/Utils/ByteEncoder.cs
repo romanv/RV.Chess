@@ -4,9 +4,9 @@ using RV.Chess.Shared.Types;
 
 namespace RV.Chess.Board.Utils;
 
-internal static class ByteEncoder
+public static class ByteEncoder
 {
-    internal static int WriteBytes(Chessgame game, Span<byte> destination)
+    public static int WriteBytes(Chessgame game, Span<byte> destination)
     {
         if (destination.Length < 192)
             throw new ArgumentException(
@@ -115,7 +115,7 @@ internal static class ByteEncoder
         return written;
     }
 
-    internal static void ReadBytes(ReadOnlySpan<byte> bytes, Chessgame game)
+    public static void ReadBytes(ReadOnlySpan<byte> bytes, Chessgame game)
     {
         if (bytes.Length < 9)
             throw new InvalidDataException("Data is too short to contain a meaningful position");
