@@ -206,6 +206,7 @@ Start:
                         {
                             _reader.Advance(2);
                             _state.AddMove("--", true);
+                            break;
                         }
 
                         throw new PgnParsingException(PgnErrorType.MovetextError, "Unrecognized SAN");
