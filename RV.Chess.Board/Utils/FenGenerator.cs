@@ -104,6 +104,9 @@ namespace RV.Chess.Board.Utils
                     case 'Q':
                     case 'K':
                     case 'P':
+                        if (file > 7)
+                            return false;
+
                         var type = PieceTypeFromChar(fen[pos]);
                         var side = char.IsLower(fen[pos]) ? Side.Black : Side.White;
                         game.Board.AddPiece(type, side, rank * 8 + file);
