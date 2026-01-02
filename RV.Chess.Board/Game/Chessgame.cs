@@ -14,13 +14,13 @@ namespace RV.Chess.Board.Game
         internal readonly Stack<FastMove> _moveList = new();
         internal ulong _incrementalHash = Zobrist.DefaultPositionPieceHash;
         private const int MAX_MOVES = 220;
-        private readonly DefaultObjectPool<BoardState> _boardsPool = new(new DefaultPooledObjectPolicy<BoardState>());
+        private readonly DefaultObjectPool<BoardState> _boardsPool = new(
+            new DefaultPooledObjectPolicy<BoardState>()
+        );
         private readonly FastMove[] _moves = new FastMove[MAX_MOVES];
         private readonly ArrayPool<FastMove> _movesPool = ArrayPool<FastMove>.Shared;
 
-        public Chessgame()
-        {
-        }
+        public Chessgame() { }
 
         public Chessgame(string fen)
         {
@@ -47,6 +47,7 @@ namespace RV.Chess.Board.Game
             Moves.Clear();
             Board.Reset();
             CurrentMoveNumber = 1;
+            HalfMoveClockStart = 0;
             SideToMove = Side.White;
             CastlingRights = CastlingRights.All;
             EpSquareMask = 0;
@@ -134,7 +135,13 @@ namespace RV.Chess.Board.Game
                     MakeMoveOnBoard(legal[i], legal, fillSan);
                     return true;
                 }
-                else if (san[0] == fmSan[0] && san[1] >= 'a' && san[1] <= 'h' && san[2] >= 'a' && san[2] <= 'h')
+                else if (
+                    san[0] == fmSan[0]
+                    && san[1] >= 'a'
+                    && san[1] <= 'h'
+                    && san[2] >= 'a'
+                    && san[2] <= 'h'
+                )
                 {
                     // Check for unnecessary disambiguation
                     var sanNoDisambiguation = san[..1] + san[2..];
@@ -149,7 +156,12 @@ namespace RV.Chess.Board.Game
             return false;
         }
 
-        public bool TryMakeMove(string from, string to, PieceType promoteTo = PieceType.None, bool fillSan = true)
+        public bool TryMakeMove(
+            string from,
+            string to,
+            PieceType promoteTo = PieceType.None,
+            bool fillSan = true
+        )
         {
             var piece = Board.GetPieceTypeAt(Coordinates.SquareToIdx(from));
             var legal = GenerateMoves(piece);
@@ -164,7 +176,12 @@ namespace RV.Chess.Board.Game
             return true;
         }
 
-        public bool TryMakeMove(int from, int to, PieceType promoteTo = PieceType.None, bool fillSan = true)
+        public bool TryMakeMove(
+            int from,
+            int to,
+            PieceType promoteTo = PieceType.None,
+            bool fillSan = true
+        )
         {
             var piece = Board.GetPieceTypeAt(from);
             var legal = GenerateMoves(piece);
@@ -222,14 +239,22 @@ namespace RV.Chess.Board.Game
                 Board.AddPieceUnsafe(PieceType.Pawn, last.Side.Opposite(), last.EpCaptureTarget);
                 Board.RemovePieceAt(last.To);
                 Board.AddPieceUnsafe(PieceType.Pawn, last.Side, last.From);
-                _incrementalHash ^= Zobrist.GetPieceHash(last.EpCaptureTarget, PieceType.Pawn, last.Side.Opposite());
+                _incrementalHash ^= Zobrist.GetPieceHash(
+                    last.EpCaptureTarget,
+                    PieceType.Pawn,
+                    last.Side.Opposite()
+                );
                 _incrementalHash ^= Zobrist.GetPieceHash(last.To, PieceType.Pawn, last.Side);
                 _incrementalHash ^= Zobrist.GetPieceHash(last.From, PieceType.Pawn, last.Side);
             }
             else if (last.IsCapture)
             {
                 Board.AddPieceUnsafe(last.CapturedPiece, last.Side.Opposite(), last.To);
-                _incrementalHash ^= Zobrist.GetPieceHash(last.To, last.CapturedPiece, last.Side.Opposite());
+                _incrementalHash ^= Zobrist.GetPieceHash(
+                    last.To,
+                    last.CapturedPiece,
+                    last.Side.Opposite()
+                );
                 _incrementalHash ^= Zobrist.GetPieceHash(last.To, last.PieceAfterMove, last.Side);
                 _incrementalHash ^= Zobrist.GetPieceHash(last.From, last.OriginalPiece, last.Side);
             }
@@ -243,7 +268,10 @@ namespace RV.Chess.Board.Game
             // Ep mask would have been set only if the last move could have been an Ep move
             // and potential capturing pawns are still attacking potential Ep square
             var epMask = last.PotentialEpCapturersMask;
-            if (epMask > 0 && (epMask & Board.GetPieceBoard(PieceType.Pawn, last.Side.Opposite())) > 0)
+            if (
+                epMask > 0
+                && (epMask & Board.GetPieceBoard(PieceType.Pawn, last.Side.Opposite())) > 0
+            )
             {
                 _incrementalHash ^= Zobrist.GetEnPassantHash(1UL << last.EpCaptureTarget);
             }
@@ -270,14 +298,15 @@ namespace RV.Chess.Board.Game
 
         internal Span<FastMove> GenerateMoves() => GenerateMoves(_moves, Board, SideToMove);
 
-        internal Span<FastMove> GenerateMoves(PieceType pieceFilter)
-            => GenerateMoves(_moves, Board, SideToMove, pieceFilter);
+        internal Span<FastMove> GenerateMoves(PieceType pieceFilter) =>
+            GenerateMoves(_moves, Board, SideToMove, pieceFilter);
 
         internal Span<FastMove> GenerateMoves(
             Span<FastMove> moves,
             BoardState branchBoard,
             Side side,
-            PieceType pieceFilter = PieceType.None)
+            PieceType pieceFilter = PieceType.None
+        )
         {
             var ownKingSquare = branchBoard.GetOwnKingSquare(side);
             var checkers = Movement.GetSquareAttackers(branchBoard, ownKingSquare, side.Opposite());
@@ -288,25 +317,56 @@ namespace RV.Chess.Board.Game
 
             if (checkersCount > 1)
             {
-                cursor = Movement.GetKingEvasions(ownKingSquare, side, moves, cursor, branchBoard,
-                    CastlingRights, epSquare);
+                cursor = Movement.GetKingEvasions(
+                    ownKingSquare,
+                    side,
+                    moves,
+                    cursor,
+                    branchBoard,
+                    CastlingRights,
+                    epSquare
+                );
                 return moves[..cursor];
             }
             else if (checkersCount == 1)
             {
-                cursor = Movement.GetKingEvasions(ownKingSquare, side, moves, cursor, branchBoard,
-                    CastlingRights, epSquare);
+                cursor = Movement.GetKingEvasions(
+                    ownKingSquare,
+                    side,
+                    moves,
+                    cursor,
+                    branchBoard,
+                    CastlingRights,
+                    epSquare
+                );
                 var pinned = Movement.GetPinnedPieces(branchBoard, side);
-                cursor = Movement.GetCheckDefenses(side, moves, cursor, branchBoard, ownKingSquare,
-                    checkers, pinned, CastlingRights, epSquare);
+                cursor = Movement.GetCheckDefenses(
+                    side,
+                    moves,
+                    cursor,
+                    branchBoard,
+                    ownKingSquare,
+                    checkers,
+                    pinned,
+                    CastlingRights,
+                    epSquare
+                );
                 legalCount = VerifyMoves(moves[..cursor], branchBoard, side);
             }
             else
             {
                 var pinned = Movement.GetPinnedPieces(branchBoard, side);
-                cursor = pieceFilter == PieceType.None
-                    ? GeneratePseudoLegalMoves(side, moves, cursor, branchBoard, pinned)
-                    : GeneratePseudoLegalMovesForPiece(side, moves, cursor, branchBoard, pinned, pieceFilter);
+                cursor =
+                    pieceFilter == PieceType.None
+                        ? GeneratePseudoLegalMoves(side, moves, cursor, branchBoard, pinned)
+                        : GeneratePseudoLegalMovesForPiece(
+                            side,
+                            moves,
+                            cursor,
+                            branchBoard,
+                            pinned,
+                            pieceFilter
+                        );
                 legalCount = VerifyMoves(moves[..cursor], branchBoard, side);
             }
 
@@ -323,10 +383,16 @@ namespace RV.Chess.Board.Game
             return legals;
         }
 
-        internal FastMove MakeMove(string from, string to, PieceType promoteTo = PieceType.None, bool fillSan = false)
+        internal FastMove MakeMove(
+            string from,
+            string to,
+            PieceType promoteTo = PieceType.None,
+            bool fillSan = false
+        )
         {
             var legal = GenerateMoves();
-            var matching = Find(legal, from, to, promoteTo) ?? throw new InvalidMoveException(from, to, Fen);
+            var matching =
+                Find(legal, from, to, promoteTo) ?? throw new InvalidMoveException(from, to, Fen);
             MakeMoveOnBoard(matching, legal, fillSan);
             return matching;
         }
@@ -334,7 +400,8 @@ namespace RV.Chess.Board.Game
         internal FastMove MakeMove(FastMove move, bool fillSan = false)
         {
             var legal = GenerateMoves();
-            var matching = Find(legal, move) ?? throw new InvalidMoveException(move.From, move.To, Fen);
+            var matching =
+                Find(legal, move) ?? throw new InvalidMoveException(move.From, move.To, Fen);
             MakeMoveOnBoard(matching, legal, fillSan);
             return matching;
         }
@@ -344,7 +411,8 @@ namespace RV.Chess.Board.Game
             var nullMove = FastMove.CreateNull(
                 SideToMove,
                 BitOperations.TrailingZeroCount(EpSquareMask),
-                CastlingRights);
+                CastlingRights
+            );
             _moveList.Push(nullMove);
             Moves.Add(Move.FromFastMove(nullMove));
 
@@ -360,13 +428,20 @@ namespace RV.Chess.Board.Game
             return nullMove;
         }
 
-        private static FastMove? Find(Span<FastMove> moves, string from, string to, PieceType promoteTo = PieceType.None)
+        private static FastMove? Find(
+            Span<FastMove> moves,
+            string from,
+            string to,
+            PieceType promoteTo = PieceType.None
+        )
         {
             for (var i = 0; i < moves.Length; i++)
             {
-                if (moves[i].From == Coordinates.SquareToIdx(from)
+                if (
+                    moves[i].From == Coordinates.SquareToIdx(from)
                     && moves[i].To == Coordinates.SquareToIdx(to)
-                    && moves[i].PromotionChar == promoteTo.TypeChar())
+                    && moves[i].PromotionChar == promoteTo.TypeChar()
+                )
                 {
                     return moves[i];
                 }
@@ -375,13 +450,20 @@ namespace RV.Chess.Board.Game
             return null;
         }
 
-        private static FastMove? Find(Span<FastMove> moves, int from, int to, PieceType promoteTo = PieceType.None)
+        private static FastMove? Find(
+            Span<FastMove> moves,
+            int from,
+            int to,
+            PieceType promoteTo = PieceType.None
+        )
         {
             for (var i = 0; i < moves.Length; i++)
             {
-                if (moves[i].From == from
+                if (
+                    moves[i].From == from
                     && moves[i].To == to
-                    && moves[i].PromotionChar == promoteTo.TypeChar())
+                    && moves[i].PromotionChar == promoteTo.TypeChar()
+                )
                 {
                     return moves[i];
                 }
@@ -408,7 +490,8 @@ namespace RV.Chess.Board.Game
             Span<FastMove> moves,
             int cursor,
             BoardState branchBoard,
-            ulong pinned)
+            ulong pinned
+        )
         {
             var allTargets = ~branchBoard.Occupied[(int)side];
             var captureTargets = allTargets & (branchBoard.Occupied[(int)side ^ 1] | EpSquareMask);
@@ -418,25 +501,83 @@ namespace RV.Chess.Board.Game
 
             if (side == Side.White)
             {
-                cursor = Movement.GetWhitePawnMoves(moveTargets, captureTargets, moves, cursor,
-                    branchBoard, pinned, CastlingRights, epSquare);
+                cursor = Movement.GetWhitePawnMoves(
+                    moveTargets,
+                    captureTargets,
+                    moves,
+                    cursor,
+                    branchBoard,
+                    pinned,
+                    CastlingRights,
+                    epSquare
+                );
             }
             else
             {
-                cursor = Movement.GetBlackPawnMoves(moveTargets, captureTargets, moves, cursor,
-                    branchBoard, pinned, CastlingRights, epSquare);
+                cursor = Movement.GetBlackPawnMoves(
+                    moveTargets,
+                    captureTargets,
+                    moves,
+                    cursor,
+                    branchBoard,
+                    pinned,
+                    CastlingRights,
+                    epSquare
+                );
             }
 
-            cursor = Movement.GetRookMoves(allTargets, side, moves, cursor, branchBoard,
-                pinned, enemyKingSquare, CastlingRights, epSquare);
-            cursor = Movement.GetBishopMoves(allTargets, side, moves, cursor, branchBoard,
-                pinned, enemyKingSquare, CastlingRights, epSquare);
-            cursor = Movement.GetQueenMoves(allTargets, side, moves, cursor, branchBoard,
-                pinned, enemyKingSquare, CastlingRights, epSquare);
-            cursor = Movement.GetKnightMoves(allTargets, side, moves, cursor, branchBoard,
-                pinned, enemyKingSquare, CastlingRights, epSquare);
-            cursor = Movement.GetKingMoves(side, moves, cursor, branchBoard,
-                CastlingRights, epSquare);
+            cursor = Movement.GetRookMoves(
+                allTargets,
+                side,
+                moves,
+                cursor,
+                branchBoard,
+                pinned,
+                enemyKingSquare,
+                CastlingRights,
+                epSquare
+            );
+            cursor = Movement.GetBishopMoves(
+                allTargets,
+                side,
+                moves,
+                cursor,
+                branchBoard,
+                pinned,
+                enemyKingSquare,
+                CastlingRights,
+                epSquare
+            );
+            cursor = Movement.GetQueenMoves(
+                allTargets,
+                side,
+                moves,
+                cursor,
+                branchBoard,
+                pinned,
+                enemyKingSquare,
+                CastlingRights,
+                epSquare
+            );
+            cursor = Movement.GetKnightMoves(
+                allTargets,
+                side,
+                moves,
+                cursor,
+                branchBoard,
+                pinned,
+                enemyKingSquare,
+                CastlingRights,
+                epSquare
+            );
+            cursor = Movement.GetKingMoves(
+                side,
+                moves,
+                cursor,
+                branchBoard,
+                CastlingRights,
+                epSquare
+            );
 
             return cursor;
         }
@@ -447,7 +588,8 @@ namespace RV.Chess.Board.Game
             int cursor,
             BoardState branchBoard,
             ulong pinned,
-            PieceType piece)
+            PieceType piece
+        )
         {
             var allTargets = ~branchBoard.Occupied[(int)side];
             var captureTargets = allTargets & (branchBoard.Occupied[(int)side ^ 1] | EpSquareMask);
@@ -460,34 +602,92 @@ namespace RV.Chess.Board.Game
                 case PieceType.Pawn:
                     if (side == Side.White)
                     {
-                        cursor = Movement.GetWhitePawnMoves(moveTargets, captureTargets, moves, cursor,
-                            branchBoard, pinned, CastlingRights, epSquare);
+                        cursor = Movement.GetWhitePawnMoves(
+                            moveTargets,
+                            captureTargets,
+                            moves,
+                            cursor,
+                            branchBoard,
+                            pinned,
+                            CastlingRights,
+                            epSquare
+                        );
                     }
                     else
                     {
-                        cursor = Movement.GetBlackPawnMoves(moveTargets, captureTargets, moves, cursor,
-                            branchBoard, pinned, CastlingRights, epSquare);
+                        cursor = Movement.GetBlackPawnMoves(
+                            moveTargets,
+                            captureTargets,
+                            moves,
+                            cursor,
+                            branchBoard,
+                            pinned,
+                            CastlingRights,
+                            epSquare
+                        );
                     }
                     break;
                 case PieceType.King:
-                    cursor = Movement.GetKingMoves(side, moves, cursor, branchBoard,
-                        CastlingRights, epSquare);
+                    cursor = Movement.GetKingMoves(
+                        side,
+                        moves,
+                        cursor,
+                        branchBoard,
+                        CastlingRights,
+                        epSquare
+                    );
                     break;
                 case PieceType.Queen:
-                    cursor = Movement.GetQueenMoves(allTargets, side, moves, cursor, branchBoard,
-                        pinned, enemyKingSquare, CastlingRights, epSquare);
+                    cursor = Movement.GetQueenMoves(
+                        allTargets,
+                        side,
+                        moves,
+                        cursor,
+                        branchBoard,
+                        pinned,
+                        enemyKingSquare,
+                        CastlingRights,
+                        epSquare
+                    );
                     break;
                 case PieceType.Rook:
-                    cursor = Movement.GetRookMoves(allTargets, side, moves, cursor, branchBoard,
-                        pinned, enemyKingSquare, CastlingRights, epSquare);
+                    cursor = Movement.GetRookMoves(
+                        allTargets,
+                        side,
+                        moves,
+                        cursor,
+                        branchBoard,
+                        pinned,
+                        enemyKingSquare,
+                        CastlingRights,
+                        epSquare
+                    );
                     break;
                 case PieceType.Bishop:
-                    cursor = Movement.GetBishopMoves(allTargets, side, moves, cursor, branchBoard,
-                        pinned, enemyKingSquare, CastlingRights, epSquare);
+                    cursor = Movement.GetBishopMoves(
+                        allTargets,
+                        side,
+                        moves,
+                        cursor,
+                        branchBoard,
+                        pinned,
+                        enemyKingSquare,
+                        CastlingRights,
+                        epSquare
+                    );
                     break;
                 case PieceType.Knight:
-                    cursor = Movement.GetKnightMoves(allTargets, side, moves, cursor, branchBoard,
-                        pinned, enemyKingSquare, CastlingRights, epSquare);
+                    cursor = Movement.GetKnightMoves(
+                        allTargets,
+                        side,
+                        moves,
+                        cursor,
+                        branchBoard,
+                        pinned,
+                        enemyKingSquare,
+                        CastlingRights,
+                        epSquare
+                    );
                     break;
                 default:
                     break;
@@ -520,8 +720,16 @@ namespace RV.Chess.Board.Game
             Board.RemovePieceAt(move.To);
             Board.AddPieceUnsafe(PieceType.King, move.Side, move.From);
 
-            _incrementalHash ^= Zobrist.GetPieceHash(move.CastlingRookTo, PieceType.Rook, move.Side);
-            _incrementalHash ^= Zobrist.GetPieceHash(move.CastlingRookFrom, PieceType.Rook, move.Side);
+            _incrementalHash ^= Zobrist.GetPieceHash(
+                move.CastlingRookTo,
+                PieceType.Rook,
+                move.Side
+            );
+            _incrementalHash ^= Zobrist.GetPieceHash(
+                move.CastlingRookFrom,
+                PieceType.Rook,
+                move.Side
+            );
             _incrementalHash ^= Zobrist.GetPieceHash(move.From, PieceType.King, move.Side);
             _incrementalHash ^= Zobrist.GetPieceHash(move.To, PieceType.King, move.Side);
         }
@@ -560,7 +768,11 @@ namespace RV.Chess.Board.Game
                 if (move.IsEnPassant)
                 {
                     Board.RemovePieceAt(move.EpCaptureTarget);
-                    _incrementalHash ^= Zobrist.GetPieceHash(move.EpCaptureTarget, PieceType.Pawn, move.Side.Opposite());
+                    _incrementalHash ^= Zobrist.GetPieceHash(
+                        move.EpCaptureTarget,
+                        PieceType.Pawn,
+                        move.Side.Opposite()
+                    );
                 }
             }
             else
@@ -591,7 +803,11 @@ namespace RV.Chess.Board.Game
                 {
                     if (!move.IsEnPassant)
                     {
-                        _incrementalHash ^= Zobrist.GetPieceHash(move.To, move.CapturedPiece, move.Side.Opposite());
+                        _incrementalHash ^= Zobrist.GetPieceHash(
+                            move.To,
+                            move.CapturedPiece,
+                            move.Side.Opposite()
+                        );
                     }
 
                     if (Board.GetPieceTypeAt(move.To) == PieceType.Rook)
@@ -623,7 +839,12 @@ namespace RV.Chess.Board.Game
             if (side == Side.White && move.SourceRank == 2 && move.TargetRank == 4)
             {
                 var potentialEpSquareMask = move.FromMask << 8;
-                if ((Board.GetPieceBoard(PieceType.Pawn, Side.Black) & move.PotentialEpCapturersMask) > 0)
+                if (
+                    (
+                        Board.GetPieceBoard(PieceType.Pawn, Side.Black)
+                        & move.PotentialEpCapturersMask
+                    ) > 0
+                )
                     EpSquareMask = potentialEpSquareMask;
                 else
                     EpSquareMask = 0;
@@ -631,7 +852,12 @@ namespace RV.Chess.Board.Game
             else if (side == Side.Black && move.SourceRank == 7 && move.TargetRank == 5)
             {
                 var potentialEpSquareMask = move.FromMask >> 8;
-                if ((Board.GetPieceBoard(PieceType.Pawn, Side.White) & move.PotentialEpCapturersMask) > 0)
+                if (
+                    (
+                        Board.GetPieceBoard(PieceType.Pawn, Side.White)
+                        & move.PotentialEpCapturersMask
+                    ) > 0
+                )
                     EpSquareMask = potentialEpSquareMask;
                 else
                     EpSquareMask = 0;
@@ -642,10 +868,7 @@ namespace RV.Chess.Board.Game
             }
         }
 
-        private int VerifyMoves(
-            Span<FastMove> moves,
-            BoardState branchBoard,
-            Side sideToMove)
+        private int VerifyMoves(Span<FastMove> moves, BoardState branchBoard, Side sideToMove)
         {
             var legalsCount = 0;
 
@@ -657,7 +880,9 @@ namespace RV.Chess.Board.Game
                 if (!moves[i].IsCheck)
                 {
                     var movingPieceType = branchBoard.GetPieceTypeAt(moves[i].From);
-                    var captureTargetSquare = moves[i].IsEnPassant ? moves[i].EpCaptureTarget : moves[i].To;
+                    var captureTargetSquare = moves[i].IsEnPassant
+                        ? moves[i].EpCaptureTarget
+                        : moves[i].To;
                     var oldEnPassant = EpSquareMask;
                     branchBoard.RemovePieceAt(moves[i].From);
 
@@ -668,15 +893,23 @@ namespace RV.Chess.Board.Game
                     else if (moves[i].IsCastling)
                     {
                         branchBoard.RemovePieceAt(moves[i].CastlingRookFrom);
-                        branchBoard.AddPieceUnsafe(PieceType.Rook, sideToMove, moves[i].CastlingRookTo);
+                        branchBoard.AddPieceUnsafe(
+                            PieceType.Rook,
+                            sideToMove,
+                            moves[i].CastlingRookTo
+                        );
                     }
 
                     branchBoard.AddPieceUnsafe(moves[i].PieceAfterMove, sideToMove, moves[i].To);
 
                     // other captures are already checked durung the move generation phase
-                    var ownKingExposedAfterMove = moves[i].IsEnPassant
+                    var ownKingExposedAfterMove =
+                        moves[i].IsEnPassant
                         && Movement.IsSquareAttacked(
-                            branchBoard.GetOwnKingSquare(sideToMove), sideToMove.Opposite(), branchBoard);
+                            branchBoard.GetOwnKingSquare(sideToMove),
+                            sideToMove.Opposite(),
+                            branchBoard
+                        );
 
                     if (ownKingExposedAfterMove)
                     {
@@ -684,8 +917,11 @@ namespace RV.Chess.Board.Game
                     }
                     else
                     {
-                        var enemyKingAttackedAfterMove =
-                            Movement.IsSquareAttacked(branchBoard.GetEnemyKingSquare(sideToMove), sideToMove, branchBoard);
+                        var enemyKingAttackedAfterMove = Movement.IsSquareAttacked(
+                            branchBoard.GetEnemyKingSquare(sideToMove),
+                            sideToMove,
+                            branchBoard
+                        );
 
                         if (enemyKingAttackedAfterMove)
                         {
@@ -696,18 +932,26 @@ namespace RV.Chess.Board.Game
                             nextPlyBoard.CopyFrom(branchBoard);
                             var nextPlyMoves = _movesPool.Rent(MAX_MOVES);
 
-                            if (movingPieceType == PieceType.Pawn && Math.Abs(moves[i].From - moves[i].To) == 16)
+                            if (
+                                movingPieceType == PieceType.Pawn
+                                && Math.Abs(moves[i].From - moves[i].To) == 16
+                            )
                             {
-                                EpSquareMask = moves[i].To > moves[i].From
-                                    ? moves[i].FromMask << 8
-                                    : moves[i].FromMask >> 8;
+                                EpSquareMask =
+                                    moves[i].To > moves[i].From
+                                        ? moves[i].FromMask << 8
+                                        : moves[i].FromMask >> 8;
                             }
                             else
                             {
                                 EpSquareMask = 0;
                             }
 
-                            var evasionMoves = GenerateMoves(nextPlyMoves, nextPlyBoard, sideToMove.Opposite());
+                            var evasionMoves = GenerateMoves(
+                                nextPlyMoves,
+                                nextPlyBoard,
+                                sideToMove.Opposite()
+                            );
 
                             if (evasionMoves.IsEmpty)
                             {
@@ -726,12 +970,20 @@ namespace RV.Chess.Board.Game
                     if (moves[i].IsCastling)
                     {
                         branchBoard.RemovePieceAt(moves[i].CastlingRookTo);
-                        branchBoard.AddPieceUnsafe(PieceType.Rook, sideToMove, moves[i].CastlingRookFrom);
+                        branchBoard.AddPieceUnsafe(
+                            PieceType.Rook,
+                            sideToMove,
+                            moves[i].CastlingRookFrom
+                        );
                     }
 
                     if (moves[i].IsCapture)
                     {
-                        branchBoard.AddPieceUnsafe(moves[i].CapturedPiece, sideToMove.Opposite(), captureTargetSquare);
+                        branchBoard.AddPieceUnsafe(
+                            moves[i].CapturedPiece,
+                            sideToMove.Opposite(),
+                            captureTargetSquare
+                        );
                     }
 
                     EpSquareMask = oldEnPassant;
