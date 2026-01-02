@@ -13,19 +13,22 @@
 
     public static class PieceTypeExtensions
     {
-        public static char TypeChar(this PieceType type) => type switch
-        {
-            PieceType.Bishop => 'B',
-            PieceType.King => 'K',
-            PieceType.Knight => 'N',
-            PieceType.Pawn => 'P',
-            PieceType.Queen => 'Q',
-            PieceType.Rook => 'R',
-            _ => '?',
-        };
+        public static char TypeChar(this PieceType type) =>
+            type switch
+            {
+                PieceType.Bishop => 'B',
+                PieceType.King => 'K',
+                PieceType.Knight => 'N',
+                PieceType.Pawn => 'P',
+                PieceType.Queen => 'Q',
+                PieceType.Rook => 'R',
+                _ => '?',
+            };
 
         public static char ToChar(this PieceType type, Side side) =>
             side == Side.White ? type.TypeChar() : char.ToLower(type.TypeChar());
+
+        public static char ToChar(this PieceType type) => char.ToLower(type.TypeChar());
 
         public static PieceType CharToPieceType(char c)
         {
@@ -37,7 +40,7 @@
                 'N' or 'n' => PieceType.Knight,
                 'B' or 'b' => PieceType.Bishop,
                 'P' or 'p' => PieceType.Pawn,
-                _ => PieceType.None
+                _ => PieceType.None,
             };
         }
     }

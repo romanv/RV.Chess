@@ -57,11 +57,12 @@ namespace RV.Chess.Board.Types
 
         public bool IsNullMove { get; init; }
 
-        public int EnPassantCaptureTarget => IsEnPassant
-            ? Side == Side.White
-                ? ToIdx - 8
-                : ToIdx + 8
-            : -1;
+        public int EnPassantCaptureTarget =>
+            IsEnPassant
+                ? Side == Side.White
+                    ? ToIdx - 8
+                    : ToIdx + 8
+                : -1;
 
         public CastlingRights Castling { get; init; } = CastlingRights.None;
 
@@ -72,6 +73,16 @@ namespace RV.Chess.Board.Types
         public override string ToString()
         {
             return string.IsNullOrEmpty(San) ? $"{From}{To}" : San;
+        }
+
+        public string ToUciString()
+        {
+            if (IsNullMove)
+                return "-";
+            if (PromoteTo != PieceType.None)
+                return $"{From}{To}{PromoteTo.ToChar()}";
+
+            return $"{From}{To}";
         }
 
         internal FastMove ToFastMove(Chessgame gameState)
@@ -91,9 +102,13 @@ namespace RV.Chess.Board.Types
             }
             else if (Castling != CastlingRights.None)
             {
-                moveType = (Castling == CastlingRights.WhiteKingside || Castling == CastlingRights.BlackKingside)
-                    ? MoveType.CastleShort
-                    : MoveType.CastleLong;
+                moveType =
+                    (
+                        Castling == CastlingRights.WhiteKingside
+                        || Castling == CastlingRights.BlackKingside
+                    )
+                        ? MoveType.CastleShort
+                        : MoveType.CastleLong;
             }
             else
             {
@@ -120,7 +135,8 @@ namespace RV.Chess.Board.Types
                 IsMate,
                 capturedPiece,
                 gameState.EpSquare,
-                gameState.CastlingRights);
+                gameState.CastlingRights
+            );
         }
 
         private static CastlingRights GetCastling(FastMove m)
@@ -132,10 +148,14 @@ namespace RV.Chess.Board.Types
 
             if (m.Side == Side.White)
             {
-                return m.Type == MoveType.CastleLong ? CastlingRights.WhiteQueenside : CastlingRights.WhiteKingside;
+                return m.Type == MoveType.CastleLong
+                    ? CastlingRights.WhiteQueenside
+                    : CastlingRights.WhiteKingside;
             }
 
-            return m.Type == MoveType.CastleLong ? CastlingRights.BlackQueenside : CastlingRights.BlackKingside;
+            return m.Type == MoveType.CastleLong
+                ? CastlingRights.BlackQueenside
+                : CastlingRights.BlackKingside;
         }
 
         private static PieceType GetPromotion(FastMove m)
