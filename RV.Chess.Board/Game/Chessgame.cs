@@ -136,11 +136,10 @@ namespace RV.Chess.Board.Game
                     return true;
                 }
                 else if (
-                    san[0] == fmSan[0]
-                    && san[1] >= 'a'
-                    && san[1] <= 'h'
-                    && san[2] >= 'a'
-                    && san[2] <= 'h'
+                    san.Length >= 4
+                    && san[0] == fmSan[0]
+                    && san[2] == fmSan[1]
+                    && (Coordinates.IsFile(san[1]) || Coordinates.IsRank(san[1]))
                 )
                 {
                     // Check for unnecessary disambiguation

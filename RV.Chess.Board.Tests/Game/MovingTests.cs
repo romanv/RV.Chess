@@ -222,5 +222,13 @@ namespace RV.Chess.Board.Tests
             var game = new Chessgame(fen);
             Assert.True(game.TryMakeMove("Ncb4"));
         }
+
+        [Fact]
+        public void SanDisambiguation_AcceptsUnnecessaryRankDisambiguation()
+        {
+            var fen = "8/p2b1pk1/1pq2rpp/4Q3/P3P2P/BPPR1R2/6K1/5r2 b - - 1 1";
+            var game = new Chessgame(fen);
+            Assert.True(game.TryMakeMove("R1xf3"));
+        }
     }
 }

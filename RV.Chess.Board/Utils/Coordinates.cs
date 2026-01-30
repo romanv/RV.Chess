@@ -44,5 +44,9 @@
             var idx = SquareToIdx(square);
             return idx > -1 && idx < 64;
         }
+
+        public static bool IsFile(char c) => c >= 'a' && c <= 'h';
+
+        public static bool IsRank(char c) => c >= '1' && c <= '8';
     }
 }
