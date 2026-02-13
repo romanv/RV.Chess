@@ -56,14 +56,28 @@ namespace RV.Chess.Board.Tests
             var g = new Chessgame();
 
             g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 b KQkq - 0 1");
-            Assert.True(g.CastlingRights.CanCastle(CastlingRights.WhiteKingside | CastlingRights.WhiteQueenside
-                | CastlingRights.BlackKingside | CastlingRights.BlackQueenside));
+            Assert.True(
+                g.CastlingRights.CanCastle(
+                    CastlingRights.WhiteKingside
+                        | CastlingRights.WhiteQueenside
+                        | CastlingRights.BlackKingside
+                        | CastlingRights.BlackQueenside
+                )
+            );
 
             g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 b KQ - 0 1");
-            Assert.False(g.CastlingRights.CanCastle(CastlingRights.BlackKingside | CastlingRights.BlackQueenside));
+            Assert.False(
+                g.CastlingRights.CanCastle(
+                    CastlingRights.BlackKingside | CastlingRights.BlackQueenside
+                )
+            );
 
             g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 b kq - 0 1");
-            Assert.False(g.CastlingRights.CanCastle(CastlingRights.WhiteKingside | CastlingRights.WhiteQueenside));
+            Assert.False(
+                g.CastlingRights.CanCastle(
+                    CastlingRights.WhiteKingside | CastlingRights.WhiteQueenside
+                )
+            );
 
             g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 b K - 0 1");
             Assert.True(g.CastlingRights.CanCastle(CastlingRights.WhiteKingside));
@@ -86,7 +100,10 @@ namespace RV.Chess.Board.Tests
         {
             var g = new Chessgame();
             g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 b KQkq c3 0 1");
-            Assert.Equal("c3", Coordinates.IdxToSquare(BitOperations.TrailingZeroCount(g.EpSquareMask)));
+            Assert.Equal(
+                "c3",
+                Coordinates.IdxToSquare(BitOperations.TrailingZeroCount(g.EpSquareMask))
+            );
             g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 b KQkq - 0 1");
             Assert.Equal(0UL, g.EpSquareMask);
             Assert.False(g.SetFen("7p/1Q6/8/4k3/3K4/8/6q1/P7 b KQkq 0 1"));
@@ -115,6 +132,31 @@ namespace RV.Chess.Board.Tests
             var g = new Chessgame();
             g.SetFen(fen);
             Assert.Equal(fen, g.Fen);
+        }
+
+        [Theory]
+        [InlineData("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBN1 w KQkq - 0 1")]
+        [InlineData("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/1NBQKBNR w KQkq - 0 1")]
+        [InlineData("1nbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")]
+        [InlineData("rnbqkbn1/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")]
+        [InlineData("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/1NBQKBN1 w KQkq - 0 1")]
+        [InlineData("1nbqkbn1/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")]
+        [InlineData("rnbqkbnr/pppppppp/8/8/8/3K4/PPPPPPPP/RNBQ1BNR w KQ - 0 1")]
+        [InlineData("rnbk1bnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")]
+        public void Fen_WithInvalidCastling_MarkedAsInvalid_WhenUsingStrictParsing(string fen)
+        {
+            var g = new Chessgame();
+            var isValid = g.SetFen(fen, true);
+            Assert.False(isValid);
+        }
+
+        [Theory]
+        [InlineData("r3k2r/pb3ppp/1pn1pq2/2b5/3p4/PN3NP1/1P3PBP/2RQ1RK1 w kq - 0 1")]
+        public void Fen_WithValidCastling_PassesCheck_WhenUsingStrictParsing(string fen)
+        {
+            var g = new Chessgame();
+            var isValid = g.SetFen(fen, true);
+            Assert.True(isValid);
         }
     }
 }

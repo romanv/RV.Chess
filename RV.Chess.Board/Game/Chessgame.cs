@@ -57,10 +57,10 @@ namespace RV.Chess.Board.Game
 
         public ulong Hash => _incrementalHash ^ Zobrist.GetCastlingHash(this);
 
-        public static bool IsValidFen(string fen)
+        public static bool IsValidFen(string fen, bool strict = false)
         {
             var cg = new Chessgame();
-            return cg.SetFen(fen);
+            return cg.SetFen(fen, strict);
         }
 
         public void ClearBoard()
@@ -83,9 +83,9 @@ namespace RV.Chess.Board.Game
             EpSquareMask = 1UL << square;
         }
 
-        public bool SetFen(string fen)
+        public bool SetFen(string fen, bool strict = false)
         {
-            return FenGenerator.ReadFen(this, fen);
+            return FenGenerator.ReadFen(this, fen, strict);
         }
 
         public void SetMoveNo(int moveNo)

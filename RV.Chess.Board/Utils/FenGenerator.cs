@@ -50,7 +50,9 @@ namespace RV.Chess.Board.Utils
 
             fen.Append($" {(game.SideToMove == Side.White ? 'w' : 'b')}");
             fen.Append($" {game.CastlingRights.AsString()}");
-            fen.Append($" {(game.EpSquareMask > 0 ? Coordinates.IdxToSquare(BitOperations.TrailingZeroCount(game.EpSquareMask)) : '-')}");
+            fen.Append(
+                $" {(game.EpSquareMask > 0 ? Coordinates.IdxToSquare(BitOperations.TrailingZeroCount(game.EpSquareMask)) : '-')}"
+            );
 
             // build half-move clock from moves
             if (rebuildhalfMoveClock)
@@ -59,7 +61,11 @@ namespace RV.Chess.Board.Utils
 
                 foreach (var move in game.Moves)
                 {
-                    if (move.Piece == PieceType.Pawn || move.PromoteTo != PieceType.None || move.IsCapture)
+                    if (
+                        move.Piece == PieceType.Pawn
+                        || move.PromoteTo != PieceType.None
+                        || move.IsCapture
+                    )
                     {
                         clock = 0;
                     }
@@ -81,7 +87,7 @@ namespace RV.Chess.Board.Utils
             return fen.ToString();
         }
 
-        internal static bool ReadFen(Chessgame game, string fen)
+        internal static bool ReadFen(Chessgame game, string fen, bool strict = false)
         {
             game.Board.Clear();
             var rank = 7;
@@ -165,7 +171,7 @@ namespace RV.Chess.Board.Utils
                     return false;
             }
 
-            if (TryParseFenCastling(parts[2], out var rights))
+            if (TryParseFenCastling(parts[2], game.Board, strict, out var rights))
                 game.CastlingRights = rights;
             else
                 return false;
@@ -221,7 +227,12 @@ namespace RV.Chess.Board.Utils
             };
         }
 
-        private static bool TryParseFenCastling(string castlingSegment, out CastlingRights result)
+        private static bool TryParseFenCastling(
+            string castlingSegment,
+            BoardState board,
+            bool strict,
+            out CastlingRights result
+        )
         {
             result = CastlingRights.None;
             var pos = 0;
@@ -230,6 +241,9 @@ namespace RV.Chess.Board.Utils
             {
                 return false;
             }
+
+            var isWhiteKingOnStartingPosition = board.GetOwnKingSquare(Side.White) == 4;
+            var isBlackKingOnStartingPosition = board.GetOwnKingSquare(Side.Black) == 60;
 
             while (pos < castlingSegment.Length)
             {
@@ -241,21 +255,71 @@ namespace RV.Chess.Board.Utils
                 }
                 else if (c == 'K')
                 {
+                    if (
+                        strict
+                        && (
+                            !isWhiteKingOnStartingPosition
+                            || (board.GetPieceBoard(PieceType.Rook, Side.White) & 128) == 0
+                        )
+                    )
+                    {
+                        return false;
+                    }
+
                     result |= CastlingRights.WhiteKingside;
                     pos++;
                 }
                 else if (c == 'Q')
                 {
+                    if (
+                        strict
+                        && (
+                            !isWhiteKingOnStartingPosition
+                            || (board.GetPieceBoard(PieceType.Rook, Side.White) & 1) == 0
+                        )
+                    )
+                    {
+                        return false;
+                    }
+
                     result |= CastlingRights.WhiteQueenside;
                     pos++;
                 }
                 else if (c == 'k')
                 {
+                    if (
+                        strict
+                        && (
+                            !isBlackKingOnStartingPosition
+                            || (
+                                board.GetPieceBoard(PieceType.Rook, Side.Black)
+                                & 9223372036854775808UL
+                            ) == 0
+                        )
+                    )
+                    {
+                        return false;
+                    }
+
                     result |= CastlingRights.BlackKingside;
                     pos++;
                 }
                 else if (c == 'q')
                 {
+                    if (
+                        strict
+                        && (
+                            !isBlackKingOnStartingPosition
+                            || (
+                                board.GetPieceBoard(PieceType.Rook, Side.Black)
+                                & 72057594037927936UL
+                            ) == 0
+                        )
+                    )
+                    {
+                        return false;
+                    }
+
                     result |= CastlingRights.BlackQueenside;
                     pos++;
                 }
