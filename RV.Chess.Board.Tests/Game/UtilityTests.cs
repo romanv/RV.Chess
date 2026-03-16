@@ -4,6 +4,7 @@ using Xunit;
 
 namespace RV.Chess.Board.Tests
 {
+    // csharpier-ignore
     public class UtilityTests
     {
         private static readonly string[] Squares =
@@ -174,6 +175,19 @@ namespace RV.Chess.Board.Tests
         {
             for (var i = 0; i < Squares.Length; i++)
                 Assert.Equal(Coordinates.SquareToIdx(Squares[i]), Array.IndexOf(Squares, Squares[i]));
+        }
+
+        [Theory]
+        [InlineData("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 39, 39)]
+        [InlineData("4k3/8/8/8/8/8/8/4K3 w - - 0 1", 0, 0)]
+        [InlineData("4k1qq/6qq/6qq/PP4qq/PP6/PP6/PP6/4K3 w - - 0 1", 8, 72)]
+        [InlineData("2b1k1nr/p5p1/8/8/8/8/P2PPPPP/1N1QKB1R w Kk - 0 1", 26, 13)]
+        public void MaterialScores(string fen, int white, int black)
+        {
+            var game = new Chessgame(fen);
+            var (w, b) = game.GetMaterialScore();
+            Assert.Equal(white, w);
+            Assert.Equal(black, b);
         }
     }
 }

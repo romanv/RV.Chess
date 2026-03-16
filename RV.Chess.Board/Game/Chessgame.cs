@@ -113,6 +113,28 @@ namespace RV.Chess.Board.Game
             return result.ToImmutableList();
         }
 
+        public (int White, int Black) GetMaterialScore()
+        {
+            var white =
+                BitOperations.PopCount(Board.GetPieceBoard(PieceType.Rook, Side.White)) * 5
+                + (
+                    BitOperations.PopCount(Board.GetPieceBoard(PieceType.Knight, Side.White))
+                    + BitOperations.PopCount(Board.GetPieceBoard(PieceType.Bishop, Side.White))
+                ) * 3
+                + BitOperations.PopCount(Board.GetPieceBoard(PieceType.Queen, Side.White)) * 9
+                + BitOperations.PopCount(Board.GetPieceBoard(PieceType.Pawn, Side.White));
+            var black =
+                BitOperations.PopCount(Board.GetPieceBoard(PieceType.Rook, Side.Black)) * 5
+                + (
+                    BitOperations.PopCount(Board.GetPieceBoard(PieceType.Knight, Side.Black))
+                    + BitOperations.PopCount(Board.GetPieceBoard(PieceType.Bishop, Side.Black))
+                ) * 3
+                + BitOperations.PopCount(Board.GetPieceBoard(PieceType.Queen, Side.Black)) * 9
+                + BitOperations.PopCount(Board.GetPieceBoard(PieceType.Pawn, Side.Black));
+
+            return (white, black);
+        }
+
         public bool TryMakeMove(string san, bool fillSan = true)
         {
             var piece = san[0] switch
