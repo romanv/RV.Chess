@@ -4,6 +4,7 @@ using RV.Chess.Shared.Types;
 
 namespace RV.Chess.Board.Utils
 {
+    // csharpier-ignore
     public static class Zobrist
     {
         internal const ulong DefaultPositionPieceHash = 4706154171649250387;
