@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
@@ -26,5 +25,4 @@
     <ProjectReference Include="..\RV.Chess.Board\RV.Chess.Board.csproj" />
     <ProjectReference Include="..\RV.Chess.Shared\RV.Chess.Shared.csproj" />
   </ItemGroup>
-
 </Project>
