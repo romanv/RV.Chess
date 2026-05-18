@@ -43,6 +43,7 @@ namespace RV.Chess.Board.Game
 
         public void Reset()
         {
+            _incrementalHash = Zobrist.DefaultPositionPieceHash;
             _moveList.Clear();
             Moves.Clear();
             Board.Reset();
